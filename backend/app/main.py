@@ -8,8 +8,8 @@ app = FastAPI(title="Career Profile Portal", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url],
-    allow_credentials=True,
+    allow_origins=["*"],       # Browser extension origin can't be whitelisted by ID
+    allow_credentials=False,   # JWT is in Authorization header, not cookies
     allow_methods=["*"],
     allow_headers=["*"],
 )

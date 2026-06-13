@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareerForge</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+      </svg>
+    </div>
+    <span class="brand">CareerForge</span>
+  </div>
+
+  <div class="body">
+    <label>CareerForge URL</label>
+    <input id="cf_url" type="url" placeholder="https://careerforge.yourdomain.com" />
+
+    <label>API Token</label>
+    <input id="cf_token" type="password" placeholder="Paste from CareerForge → Settings" />
+
+    <button id="save">Save</button>
+    <div id="status"></div>
+
+    <div class="hint">
+      In CareerForge, go to <strong>Dashboard → Extension Setup</strong> to copy your token.
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

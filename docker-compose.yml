@@ -1,46 +1,55 @@
 services:
+
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: careerportal
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d careerportal"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 10
+    # Not exposed to the host — only the backend needs it
+    expose:
+      - "5432"
 
   backend:
     build: ./backend
-    ports:
-      - "8000:8000"
+    restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-password}@db:5432/careerportal
-      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD}@db:5432/careerportal
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      FRONTEND_URL: http://localhost:3000
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY is required}
+      # Must match the domain your reverse proxy points at the frontend
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      # Authentik OIDC (optional)
       AUTHENTIK_URL: ${AUTHENTIK_URL:-}
       AUTHENTIK_CLIENT_ID: ${AUTHENTIK_CLIENT_ID:-}
       AUTHENTIK_CLIENT_SECRET: ${AUTHENTIK_CLIENT_SECRET:-}
-      AUTHENTIK_REDIRECT_URI: ${AUTHENTIK_REDIRECT_URI:-http://localhost:8000/auth/oidc/callback}
+      AUTHENTIK_REDIRECT_URI: ${AUTHENTIK_REDIRECT_URI:-}
     depends_on:
       db:
         condition: service_healthy
-    restart: on-failure
+    # Not exposed to the host — nginx inside the frontend container proxies to it
+    expose:
+      - "8000"
 
   frontend:
     build:
       context: ./frontend
+      # VITE_API_URL defaults to /api (proxied by nginx to backend)
+      # Override here only if you want a separate API domain instead
       args:
-        VITE_API_URL: http://localhost:8000
+        VITE_API_URL: ${VITE_API_URL:-/api}
+    restart: unless-stopped
     ports:
-      - "3000:80"
+      - "${FRONTEND_PORT:-3000}:80"
     depends_on:
       - backend
 

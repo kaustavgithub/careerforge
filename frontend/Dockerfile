@@ -1,6 +1,7 @@
 FROM node:16-alpine AS builder
 
-ARG VITE_API_URL=http://localhost:8000
+# /api is proxied to the backend by nginx — no hardcoded host needed
+ARG VITE_API_URL=/api
 ENV VITE_API_URL=$VITE_API_URL
 
 WORKDIR /app

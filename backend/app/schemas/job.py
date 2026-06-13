@@ -11,6 +11,14 @@ class JobSearchRequest(BaseModel):
     limit: int = 20
 
 
+class JobManualCreate(BaseModel):
+    title: str
+    company: Optional[str] = None
+    location: Optional[str] = None
+    description: str
+    apply_url: Optional[str] = None
+
+
 class JobStatusUpdate(BaseModel):
     status: str  # new | saved | applied | rejected
 

@@ -10,7 +10,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.job import JobListing
 from app.models.profile import Profile
-from app.schemas.job import JobListingSchema, JobSearchRequest, JobStatusUpdate
+from app.schemas.job import JobListingSchema, JobManualCreate, JobSearchRequest, JobStatusUpdate
 from app.services.job_match_service import batch_score_jobs, generate_cover_letter_and_tweaks
 from app.services.jobtech_service import search_jobs
 
@@ -83,6 +83,51 @@ def search_and_rank(body: JobSearchRequest, current_user=Depends(get_current_use
     # Sort by score descending
     results.sort(key=lambda j: j.match_score or 0, reverse=True)
     return results
+
+
+@router.post("/manual", response_model=JobListingSchema)
+def create_manual_job(body: JobManualCreate, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """Save a job pasted/captured manually and immediately generate cover letter."""
+    import uuid as _uuid
+    profile = _get_profile(current_user, db)
+
+    listing = JobListing(
+        user_id=current_user.id,
+        external_id=f"manual-{_uuid.uuid4()}",
+        source="manual",
+        title=body.title,
+        company=body.company,
+        location=body.location,
+        description=body.description,
+        apply_url=body.apply_url,
+        status="new",
+    )
+    db.add(listing)
+    db.commit()
+    db.refresh(listing)
+
+    job_dict = {"title": listing.title, "company": listing.company,
+                "location": listing.location, "description": listing.description}
+
+    # Score
+    scores = batch_score_jobs([{
+        "external_id": listing.external_id,
+        "title": listing.title,
+        "company": listing.company or "",
+        "description": listing.description,
+    }], profile, current_user.full_name)
+    if scores:
+        listing.match_score = scores[0].get("score")
+        listing.match_summary = scores[0].get("summary")
+
+    # Cover letter + tweaks
+    result = generate_cover_letter_and_tweaks(job_dict, profile, current_user.full_name)
+    listing.cover_letter = result.get("cover_letter", "")
+    listing.cv_tweaks = json.dumps(result.get("cv_tweaks", []))
+
+    db.commit()
+    db.refresh(listing)
+    return listing
 
 
 @router.get("", response_model=List[JobListingSchema])
