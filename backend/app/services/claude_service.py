@@ -1,12 +1,8 @@
 import json
 import re
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import anthropic
-
-from app.config import settings
-
-_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
 PARSE_PROMPT = """You are an expert CV parser. Extract all structured information from the CV text below and return ONLY valid JSON — no markdown fences, no commentary.
 
@@ -65,8 +61,9 @@ CV TEXT:
 """
 
 
-def parse_cv_text(cv_text: str) -> Dict[str, Any]:
-    message = _client.messages.create(
+def parse_cv_text(cv_text: str, api_key: Optional[str] = None) -> Dict[str, Any]:
+    client = anthropic.Anthropic(api_key=api_key)
+    message = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=4096,
         messages=[

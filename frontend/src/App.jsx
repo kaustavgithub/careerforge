@@ -1,7 +1,9 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { ThemeProvider } from './context/ThemeContext.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Jobs from './pages/Jobs.jsx'
+import Learning from './pages/Learning.jsx'
 import Login from './pages/Login.jsx'
 import OidcCallback from './pages/OidcCallback.jsx'
 import Profile from './pages/Profile.jsx'
@@ -10,6 +12,7 @@ import Register from './pages/Register.jsx'
 
 export default function App() {
   return (
+    <ThemeProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -41,7 +44,16 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/learning"
+          element={
+            <ProtectedRoute>
+              <Learning />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
+    </ThemeProvider>
   )
 }

@@ -3,7 +3,8 @@ from datetime import datetime
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -11,7 +12,12 @@ from app.dependencies import get_current_user
 from app.models.job import JobListing
 from app.models.profile import Profile
 from app.schemas.job import JobListingSchema, JobManualCreate, JobSearchRequest, JobStatusUpdate
-from app.services.job_match_service import batch_score_jobs, generate_cover_letter_and_tweaks
+from app.services.cv_service import build_tailored_profile, generate_docx, generate_pdf
+from app.services.job_match_service import (
+    batch_score_jobs,
+    generate_cover_letter_and_tweaks,
+    generate_tailored_cv_data,
+)
 from app.services.jobtech_service import search_jobs
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -37,7 +43,7 @@ def search_and_rank(body: JobSearchRequest, current_user=Depends(get_current_use
     if not raw_jobs:
         return []
 
-    # 2. Batch-score with Claude (Haiku — fast + cheap)
+    # 2. Score locally — keyword matching against profile, no API needed
     scores_list = batch_score_jobs(raw_jobs, profile, current_user.full_name)
     score_map = {s["id"]: s for s in scores_list}
 
@@ -109,7 +115,7 @@ def create_manual_job(body: JobManualCreate, current_user=Depends(get_current_us
     job_dict = {"title": listing.title, "company": listing.company,
                 "location": listing.location, "description": listing.description}
 
-    # Score
+    # Score locally
     scores = batch_score_jobs([{
         "external_id": listing.external_id,
         "title": listing.title,
@@ -121,7 +127,9 @@ def create_manual_job(body: JobManualCreate, current_user=Depends(get_current_us
         listing.match_summary = scores[0].get("summary")
 
     # Cover letter + tweaks
-    result = generate_cover_letter_and_tweaks(job_dict, profile, current_user.full_name)
+    if not current_user.anthropic_api_key:
+        raise HTTPException(status_code=400, detail="Add your Anthropic API key in Settings to generate cover letters.")
+    result = generate_cover_letter_and_tweaks(job_dict, profile, current_user.full_name, api_key=current_user.anthropic_api_key)
     listing.cover_letter = result.get("cover_letter", "")
     listing.cv_tweaks = json.dumps(result.get("cv_tweaks", []))
 
@@ -159,13 +167,61 @@ def generate_for_job(job_id: UUID, current_user=Depends(get_current_user), db: S
         "location": job.location,
         "description": job.description,
     }
-    result = generate_cover_letter_and_tweaks(job_dict, profile, current_user.full_name)
+    if not current_user.anthropic_api_key:
+        raise HTTPException(status_code=400, detail="Add your Anthropic API key in Settings to generate cover letters.")
+    result = generate_cover_letter_and_tweaks(job_dict, profile, current_user.full_name, api_key=current_user.anthropic_api_key)
 
     job.cover_letter = result.get("cover_letter", "")
     job.cv_tweaks = json.dumps(result.get("cv_tweaks", []))
     db.commit()
     db.refresh(job)
     return job
+
+
+@router.post("/{job_id}/tailored-cv")
+def tailored_cv(
+    job_id: UUID,
+    format: str = Query(default="pdf", pattern="^(pdf|docx)$"),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate an ATS-optimised CV for a specific job and return it as a file."""
+    job = db.query(JobListing).filter(
+        JobListing.id == job_id, JobListing.user_id == current_user.id
+    ).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    profile = _get_profile(current_user, db)
+
+    job_dict = {
+        "title": job.title,
+        "company": job.company,
+        "location": job.location,
+        "description": job.description,
+    }
+
+    if not current_user.anthropic_api_key:
+        raise HTTPException(status_code=400, detail="Add your Anthropic API key in Settings to generate a tailored CV.")
+    tailored_data = generate_tailored_cv_data(job_dict, profile, current_user.full_name, api_key=current_user.anthropic_api_key)
+    fake_profile = build_tailored_profile(
+        profile, tailored_data, current_user.full_name, current_user.email
+    )
+
+    safe = lambda s: (s or "").replace(" ", "_").replace("/", "-")[:25]
+    filename = f"CV_{safe(job.title)}_{safe(job.company)}"
+
+    if format == "docx":
+        return Response(
+            content=generate_docx(fake_profile),
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f'attachment; filename="{filename}.docx"'},
+        )
+    return Response(
+        content=generate_pdf(fake_profile),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}.pdf"'},
+    )
 
 
 @router.patch("/{job_id}/status", response_model=JobListingSchema)
@@ -186,6 +242,44 @@ def update_status(job_id: UUID, body: JobStatusUpdate, current_user=Depends(get_
     db.commit()
     db.refresh(job)
     return job
+
+
+@router.post("/{job_id}/translate")
+def translate_job(job_id: UUID, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """Translate job description to English using Google Translate."""
+    from deep_translator import GoogleTranslator
+    from langdetect import LangDetectException, detect
+
+    job = db.query(JobListing).filter(
+        JobListing.id == job_id, JobListing.user_id == current_user.id
+    ).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    text = job.description or ""
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="Job has no description to translate")
+
+    # Detect language — skip if already English
+    try:
+        detected = detect(text)
+    except LangDetectException:
+        detected = "unknown"
+
+    if detected == "en":
+        return {"translated": text, "detected_language": "en", "already_english": True}
+
+    # Chunk to respect Google Translate's per-request limit
+    CHUNK = 4500
+    chunks = [text[i: i + CHUNK] for i in range(0, len(text), CHUNK)]
+    try:
+        translator = GoogleTranslator(source="auto", target="en")
+        translated_chunks = [translator.translate(chunk) for chunk in chunks]
+        translated = " ".join(translated_chunks)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Translation failed: {e}")
+
+    return {"translated": translated, "detected_language": detected, "already_english": False}
 
 
 @router.delete("/{job_id}", status_code=204)

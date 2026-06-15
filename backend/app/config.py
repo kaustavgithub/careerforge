@@ -7,7 +7,6 @@ class Settings(BaseSettings):
     database_url: str
     jwt_secret: str
     jwt_expire_minutes: int = 10080
-    anthropic_api_key: str
     frontend_url: str = "http://localhost:5173"
 
     # Authentik OIDC (optional — leave unset to disable SSO)

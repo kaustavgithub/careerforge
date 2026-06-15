@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, String
+from sqlalchemy import Boolean, Column, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -13,9 +13,11 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, nullable=False, index=True)
-    hashed_password = Column(String, nullable=True)  # null for SSO-only users
+    hashed_password = Column(String, nullable=True)
     full_name = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    anthropic_api_key = Column(String, nullable=True)
+    use_local_ai = Column(Boolean, nullable=False, default=True, server_default="true")
 
     profile = relationship("Profile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     job_listings = relationship("JobListing", back_populates="user", cascade="all, delete-orphan")

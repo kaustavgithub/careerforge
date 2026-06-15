@@ -1,11 +1,10 @@
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import anthropic
 
-from app.config import settings
-
-_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+def _get_client(api_key: str) -> anthropic.Anthropic:
+    return anthropic.Anthropic(api_key=api_key)
 
 
 def _build_profile_summary(profile, full_name: str) -> str:
@@ -44,62 +43,135 @@ def _build_profile_summary(profile, full_name: str) -> str:
     return "\n".join(lines)
 
 
-def batch_score_jobs(jobs: List[Dict[str, Any]], profile, full_name: str) -> List[Dict[str, Any]]:
+def score_job_locally(job: Dict[str, Any], profile) -> tuple:
     """
-    Score up to 20 jobs against the candidate profile.
-    Returns list of {external_id, score, summary}.
+    Pure-Python keyword scoring — no API call required.
+    Returns (score: int 0-100, summary: str).
+
+    Weights:
+      - Skill keyword hits in job text : up to 60 pts
+      - Job-title words in job title   : up to 30 pts
+      - Location match                 : up to 10 pts
+    """
+    skill_keywords = {s.name.lower() for s in (profile.skills or [])}
+
+    title_keywords: set = set()
+    for exp in (profile.work_experiences or []):
+        for word in (exp.title or "").lower().split():
+            if len(word) > 3:
+                title_keywords.add(word)
+
+    job_title = (job.get("title") or "").lower()
+    full_text = f"{job_title} {(job.get('description') or '').lower()}"
+
+    if not skill_keywords and not title_keywords:
+        return 50, "Complete your profile to get accurate match scores"
+
+    skill_hits = [kw for kw in skill_keywords if kw in full_text]
+    skill_score = (len(skill_hits) / max(len(skill_keywords), 1)) * 60
+
+    title_hits = [kw for kw in title_keywords if kw in job_title]
+    title_score = min(30, len(title_hits) * 10)
+
+    location_score = 0
+    if profile.location:
+        prof_loc = profile.location.lower()
+        job_loc = (job.get("location") or "").lower()
+        if prof_loc and job_loc and (prof_loc in job_loc or job_loc in prof_loc):
+            location_score = 10
+
+    total = min(100, int(skill_score + title_score + location_score))
+
+    n = len(skill_hits)
+    if total >= 80:
+        summary = f"Strong match — {n} of your skills align with this role"
+    elif total >= 60:
+        summary = f"Good match — {n} skills found, minor gaps"
+    elif total >= 40:
+        summary = f"Partial match — {n} skills found"
+    else:
+        summary = f"Weak match — only {n} profile keywords found in this listing"
+
+    return total, summary
+
+
+def batch_score_jobs(jobs: List[Dict[str, Any]], profile, full_name: str) -> List[Dict[str, Any]]:
+    """Score a list of jobs locally (no API). Returns [{id, score, summary}]."""
+    results = []
+    for job in jobs:
+        score, summary = score_job_locally(job, profile)
+        results.append({"id": job["external_id"], "score": score, "summary": summary})
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return results
+
+
+def generate_tailored_cv_data(job: Dict[str, Any], profile, full_name: str, api_key: str = "") -> Dict[str, Any]:
+    """
+    Ask Claude Sonnet to rewrite the candidate's CV content to maximise ATS
+    score for this specific job. Returns a dict with tailored headline,
+    summary, experiences (rewritten bullets) and skill_groups (reordered).
+    Dates / companies / titles are never changed — only descriptions & summary.
     """
     profile_text = _build_profile_summary(profile, full_name)
+    desc = (job.get("description") or "")[:4000]
 
-    # Build compact job list for the prompt (title + first 400 chars of description)
-    job_snippets = []
-    for j in jobs[:20]:
-        desc_preview = (j.get("description") or "")[:400]
-        job_snippets.append({
-            "id": j["external_id"],
-            "title": j["title"],
-            "company": j.get("company", ""),
-            "description_preview": desc_preview,
-        })
+    experiences_json = json.dumps([
+        {"title": e.title, "company": e.company, "description": e.description or ""}
+        for e in (profile.work_experiences or [])
+    ], ensure_ascii=False)
 
-    prompt = f"""You are a career advisor. Score how well each job matches this candidate.
+    prompt = f"""You are an expert ATS optimisation specialist. Rewrite the candidate's CV content to maximise the ATS match score for the target role.
 
 CANDIDATE PROFILE:
 {profile_text}
 
-JOBS TO SCORE:
-{json.dumps(job_snippets, ensure_ascii=False, indent=2)}
+ORIGINAL EXPERIENCE (title / company are fixed — only rewrite description):
+{experiences_json}
 
-Return ONLY a JSON array. Each element:
+TARGET JOB:
+Title: {job.get('title', '')}
+Company: {job.get('company', '')}
+Description:
+{desc}
+
+RULES:
+- Only use skills and experience the candidate genuinely has — never invent anything
+- Mirror the exact keywords and phrases from the job description naturally
+- Rewrite each experience description as concise action-verb bullet points (one per line, no bullet symbols)
+- Reorder skill_groups: most relevant category first, most relevant skills first within each category
+- Headline must echo the job title language
+- Summary: 3-4 sentences, ATS-dense, first-person, no fluff
+
+Return ONLY valid JSON (no markdown fences):
 {{
-  "id": "<job id from input>",
-  "score": <integer 0-100>,
-  "summary": "<one sentence: why this matches or doesn't>"
-}}
+  "headline": "tailored headline",
+  "summary": "ATS-optimised summary paragraph",
+  "experiences": [
+    {{
+      "title": "exact original title",
+      "company": "exact original company",
+      "description": "rewritten bullet 1\\nrewritten bullet 2\\nrewritten bullet 3"
+    }}
+  ],
+  "skill_groups": [
+    {{ "category": "Category Name", "names": ["skill1", "skill2"] }}
+  ]
+}}"""
 
-Score criteria:
-- 80-100: strong skill + experience match
-- 60-79: partial match, some gaps
-- 40-59: tangential match
-- 0-39: poor match
-
-Return the array sorted by score descending."""
-
-    message = _client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=2048,
+    message = _get_client(api_key).messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=3000,
         messages=[{"role": "user", "content": prompt}],
     )
     raw = message.content[0].text
-    start = raw.find("[")
-    end = raw.rfind("]")
+    start = raw.find("{")
+    end = raw.rfind("}")
     if start == -1 or end == -1:
-        return []
-    scores = json.loads(raw[start: end + 1])
-    return scores
+        raise ValueError("No JSON in Claude response for tailored CV")
+    return json.loads(raw[start: end + 1])
 
 
-def generate_cover_letter_and_tweaks(job: Dict[str, Any], profile, full_name: str) -> Dict[str, Any]:
+def generate_cover_letter_and_tweaks(job: Dict[str, Any], profile, full_name: str, api_key: str = "") -> Dict[str, Any]:
     """
     Generate a tailored cover letter + CV tweaks for a single job.
     Returns {cover_letter: str, cv_tweaks: list[str]}.
@@ -129,7 +201,7 @@ Return ONLY valid JSON (no markdown):
   "cv_tweaks": ["tweak 1", "tweak 2", "tweak 3"]
 }}"""
 
-    message = _client.messages.create(
+    message = _get_client(api_key).messages.create(
         model="claude-sonnet-4-6",
         max_tokens=2048,
         messages=[{"role": "user", "content": prompt}],

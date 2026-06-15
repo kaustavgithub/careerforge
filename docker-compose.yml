@@ -25,7 +25,6 @@ services:
       DATABASE_URL: postgresql://postgres:${DB_PASSWORD}@db:5432/careerportal
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY is required}
       # Must match the domain your reverse proxy points at the frontend
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       # Authentik OIDC (optional)

@@ -1,6 +1,9 @@
 import json
+import logging
 from datetime import date
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
@@ -65,9 +68,12 @@ async def parse_cv(
     if not text.strip():
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Could not extract text from file")
 
+    if not current_user.anthropic_api_key:
+        raise HTTPException(status_code=400, detail="Add your Anthropic API key in Settings to use CV parsing.")
     try:
-        parsed = parse_cv_text(text)
-    except (json.JSONDecodeError, Exception) as e:
+        parsed = parse_cv_text(text, api_key=current_user.anthropic_api_key)
+    except Exception as e:
+        logger.error("CV parse error: %s", e, exc_info=True)
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Claude parsing failed: {str(e)}")
 
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()

@@ -249,7 +249,7 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#06070f' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-page)' }}>
         <svg className="animate-spin h-8 w-8 text-indigo-500" viewBox="0 0 24 24" fill="none">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
@@ -260,7 +260,7 @@ export default function Profile() {
 
   if (error) {
     return (
-      <div className="min-h-screen" style={{ background: '#06070f' }}>
+      <div className="min-h-screen" style={{ background: 'var(--bg-page)' }}>
         <Navbar />
         <div className="max-w-3xl mx-auto px-4 py-12 text-red-400">{error}</div>
       </div>
@@ -268,63 +268,50 @@ export default function Profile() {
   }
 
   const glassBar = {
-    background: 'rgba(6,7,15,0.75)',
+    background: 'var(--nav-bg)',
     backdropFilter: 'blur(20px)',
     WebkitBackdropFilter: 'blur(20px)',
-    borderBottom: '1px solid rgba(255,255,255,0.07)',
+    borderBottom: '1px solid var(--nav-border)',
   }
-  const glassBtn = { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }
-  const IS = { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: '#e2e8f0' }
+  const glassBtn = { background: 'var(--btn-glass-bg)', border: '1px solid var(--btn-glass-border)' }
+  const IS = { background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-color)' }
 
   return (
-    <div className="min-h-screen" style={{ background: '#06070f' }}>
+    <div className="min-h-screen" style={{ background: 'var(--bg-page)' }}>
 
       {/* ── VIEW MODE ──────────────────────────────────────────── */}
       {!isEditing && (
         <>
-          {/* Sticky action bar (serves as navbar in view mode) */}
-          <div className="sticky top-0 z-50 px-4 py-2.5" style={glassBar}>
-            <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-              {/* Brand */}
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-                    <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <span className="text-sm font-bold text-white">CareerForge</span>
-                </div>
-                <span className="text-zinc-700 text-xs hidden sm:block">/ My Profile</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button onClick={handleCopyLink}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white transition"
-                  style={glassBtn}>
-                  {copyMsg
-                    ? <span className="text-emerald-400">✓ Copied!</span>
-                    : <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>Share</>
-                  }
-                </button>
-                <button onClick={() => handleDownload('pdf')}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white transition"
-                  style={glassBtn}>
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                  PDF
-                </button>
-                <button onClick={() => handleDownload('docx')}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white transition"
-                  style={glassBtn}>
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                  DOCX
-                </button>
-                <button onClick={startEditing}
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold text-white transition"
-                  style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', boxShadow: '0 2px 12px rgba(99,102,241,0.35)' }}>
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                  Edit Profile
-                </button>
-              </div>
+          <Navbar />
+          {/* Profile action strip */}
+          <div className="px-4 py-2" style={{ background: 'var(--bg-card-dim)', borderBottom: '1px solid var(--border-faint)' }}>
+            <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-end gap-2">
+              <button onClick={handleCopyLink}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition"
+                style={{ ...glassBtn, color: 'var(--text-secondary)' }}>
+                {copyMsg
+                  ? <span className="text-emerald-400">✓ Copied!</span>
+                  : <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>Share</>
+                }
+              </button>
+              <button onClick={() => handleDownload('pdf')}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition"
+                style={{ ...glassBtn, color: 'var(--text-secondary)' }}>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                PDF
+              </button>
+              <button onClick={() => handleDownload('docx')}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition"
+                style={{ ...glassBtn, color: 'var(--text-secondary)' }}>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                DOCX
+              </button>
+              <button onClick={startEditing}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold text-white transition"
+                style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', boxShadow: '0 2px 12px rgba(99,102,241,0.35)' }}>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                Edit Profile
+              </button>
             </div>
           </div>
 

@@ -33,7 +33,6 @@ export default function Jobs() {
         location: location.trim() || null,
         limit: 20,
       })
-      // Merge: keep existing tracked jobs that aren't in new results
       setJobs(prev => {
         const newIds = new Set(data.map(j => j.id))
         const kept = prev.filter(j => !newIds.has(j.id) && j.status !== 'new')
@@ -62,26 +61,19 @@ export default function Jobs() {
     setJobs(prev => prev.filter(j => j.id !== jobId))
   }, [])
 
-  // Split into search results (new) vs tracked
-  const searchResults = jobs.filter(j => j.status === 'new' || j.cover_letter)
-  // All jobs for tracker
   const trackedJobs = jobs
 
   return (
-    <div style={{ minHeight: '100vh', background: '#06070f', color: '#e2e8f0' }}>
-      {/* Ambient background orbs */}
-      <div style={{
-        position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0,
-      }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-page)', color: 'var(--text-primary)' }}>
+      {/* Ambient orbs */}
+      <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
         <div style={{
-          position: 'absolute', width: '800px', height: '800px',
-          top: '-200px', left: '-200px',
+          position: 'absolute', width: '800px', height: '800px', top: '-200px', left: '-200px',
           background: 'radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)',
           borderRadius: '50%',
         }} />
         <div style={{
-          position: 'absolute', width: '600px', height: '600px',
-          bottom: '-100px', right: '-100px',
+          position: 'absolute', width: '600px', height: '600px', bottom: '-100px', right: '-100px',
           background: 'radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)',
           borderRadius: '50%',
         }} />
@@ -91,23 +83,21 @@ export default function Jobs() {
         <Navbar />
 
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem 1.5rem' }}>
-
-          {/* Page header */}
           <div style={{ marginBottom: '2rem' }}>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#f1f5f9', marginBottom: '0.25rem' }}>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
               Job Search
             </h1>
-            <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               AI-ranked matches from Sweden's JobTech API · Cover letters generated in seconds
             </p>
           </div>
 
           {/* Search bar */}
           <form onSubmit={handleSearch} style={{
-            background: 'rgba(255,255,255,0.04)',
+            background: 'var(--bg-card)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid var(--border)',
             borderRadius: '1rem',
             padding: '1.25rem',
             marginBottom: '2rem',
@@ -124,11 +114,11 @@ export default function Jobs() {
               onChange={e => setQuery(e.target.value)}
               style={{
                 flex: '1 1 240px',
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--input-border)',
                 borderRadius: '0.625rem',
                 padding: '0.6rem 0.875rem',
-                color: '#e2e8f0',
+                color: 'var(--input-color)',
                 fontSize: '0.875rem',
                 outline: 'none',
               }}
@@ -140,11 +130,11 @@ export default function Jobs() {
               onChange={e => setLocation(e.target.value)}
               style={{
                 flex: '0 1 180px',
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--input-border)',
                 borderRadius: '0.625rem',
                 padding: '0.6rem 0.875rem',
-                color: '#e2e8f0',
+                color: 'var(--input-color)',
                 fontSize: '0.875rem',
                 outline: 'none',
               }}
@@ -183,25 +173,23 @@ export default function Jobs() {
             </div>
           )}
 
-          {/* Main two-column layout */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '1.5rem', alignItems: 'start' }}>
-            {/* Left: results */}
             <div>
               {initialLoad && (
-                <div style={{ color: '#475569', textAlign: 'center', padding: '3rem 0' }}>Loading…</div>
+                <div style={{ color: 'var(--text-faint)', textAlign: 'center', padding: '3rem 0' }}>Loading…</div>
               )}
 
               {!initialLoad && jobs.length === 0 && (
                 <div style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.07)',
+                  background: 'var(--bg-card-dim)',
+                  border: '1px solid var(--border-dim)',
                   borderRadius: '1.25rem',
                   padding: '4rem 2rem',
                   textAlign: 'center',
                 }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔍</div>
-                  <p style={{ color: '#94a3b8', fontWeight: 500, marginBottom: '0.5rem' }}>Search for your next role</p>
-                  <p style={{ color: '#475569', fontSize: '0.82rem' }}>
+                  <p style={{ color: 'var(--text-secondary)', fontWeight: 500, marginBottom: '0.5rem' }}>Search for your next role</p>
+                  <p style={{ color: 'var(--text-faint)', fontSize: '0.82rem' }}>
                     Enter a job title or skills above — we'll fetch live Swedish listings and AI-rank them against your profile.
                   </p>
                 </div>
@@ -210,7 +198,7 @@ export default function Jobs() {
               {jobs.length > 0 && (
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.8rem' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                       {jobs.length} job{jobs.length !== 1 ? 's' : ''} · sorted by AI match score
                     </span>
                   </div>
@@ -222,9 +210,7 @@ export default function Jobs() {
                         <JobCard
                           key={job.id}
                           job={job}
-                          onGenerate={async (id) => {
-                            await handleGenerate(id)
-                          }}
+                          onGenerate={handleGenerate}
                           onStatusChange={handleStatusChange}
                           onDelete={handleDelete}
                         />
@@ -234,18 +220,13 @@ export default function Jobs() {
               )}
             </div>
 
-            {/* Right: tracker */}
             <TrackerPanel jobs={trackedJobs} onStatusChange={handleStatusChange} />
           </div>
         </div>
       </div>
 
-      {/* Generate modal */}
       {modalJob && (
-        <GenerateModal
-          job={modalJob}
-          onClose={() => setModalJob(null)}
-        />
+        <GenerateModal job={modalJob} onClose={() => setModalJob(null)} />
       )}
     </div>
   )

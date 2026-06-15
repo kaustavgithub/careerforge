@@ -1,6 +1,7 @@
 import io
 from datetime import date
-from typing import Optional
+from types import SimpleNamespace
+from typing import Any, Dict, Optional
 
 import fitz  # PyMuPDF
 from docx import Document
@@ -12,6 +13,53 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 from app.models.profile import Profile
+
+
+def build_tailored_profile(profile, tailored: Dict[str, Any], full_name: str, email: str):
+    """
+    Merge Claude's tailored CV data with the original profile ORM object,
+    returning a SimpleNamespace that the existing generate_pdf / generate_docx
+    functions can consume without modification.
+    """
+    user_ns = SimpleNamespace(full_name=full_name, email=email)
+
+    # Map original experiences for date / location lookup
+    exp_map = {(e.title or "", e.company or ""): e for e in (profile.work_experiences or [])}
+
+    tailored_exps = []
+    for te in tailored.get("experiences", []):
+        key = (te.get("title", ""), te.get("company", ""))
+        orig = exp_map.get(key)
+        if orig:
+            tailored_exps.append(SimpleNamespace(
+                title=te["title"],
+                company=te["company"],
+                start_date=orig.start_date,
+                end_date=orig.end_date,
+                is_current=orig.is_current,
+                location=orig.location,
+                description=te.get("description", orig.description or ""),
+            ))
+
+    tailored_skills = [
+        SimpleNamespace(category=sg["category"], name=name)
+        for sg in tailored.get("skill_groups", [])
+        for name in sg.get("names", [])
+    ]
+
+    return SimpleNamespace(
+        user=user_ns,
+        headline=tailored.get("headline") or profile.headline,
+        phone=profile.phone,
+        location=profile.location,
+        linkedin_url=profile.linkedin_url,
+        github_url=profile.github_url,
+        summary=tailored.get("summary") or profile.summary,
+        work_experiences=tailored_exps or list(profile.work_experiences or []),
+        educations=list(profile.educations or []),
+        skills=tailored_skills or list(profile.skills or []),
+        certifications=list(profile.certifications or []),
+    )
 
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
