@@ -22,7 +22,7 @@ services:
     build: ./backend
     restart: unless-stopped
     environment:
-      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PA@SSWORD is required}
       DB_HOST: db
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
