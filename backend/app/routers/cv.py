@@ -14,6 +14,7 @@ from app.dependencies import get_current_user
 from app.models.profile import Certification, Education, Profile, Skill, WorkExperience
 from app.models.user import User
 from app.schemas.profile import ProfileSchema
+from app.services import ai_providers
 from app.services.claude_service import parse_cv_text
 from app.services.cv_service import (
     extract_text_from_docx,
@@ -68,13 +69,13 @@ async def parse_cv(
     if not text.strip():
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Could not extract text from file")
 
-    if not current_user.anthropic_api_key:
-        raise HTTPException(status_code=400, detail="Add your Anthropic API key in Settings to use CV parsing.")
+    if not ai_providers.get_api_key(current_user):
+        raise HTTPException(status_code=400, detail=ai_providers.missing_key_message(current_user, "use CV parsing"))
     try:
-        parsed = parse_cv_text(text, api_key=current_user.anthropic_api_key)
+        parsed = parse_cv_text(text, current_user)
     except Exception as e:
         logger.error("CV parse error: %s", e, exc_info=True)
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Claude parsing failed: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"AI parsing failed: {str(e)}")
 
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
     if not profile:

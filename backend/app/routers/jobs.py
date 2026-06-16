@@ -12,6 +12,7 @@ from app.dependencies import get_current_user
 from app.models.job import JobListing
 from app.models.profile import Profile
 from app.schemas.job import JobListingSchema, JobManualCreate, JobSearchRequest, JobStatusUpdate
+from app.services import ai_providers
 from app.services.cv_service import build_tailored_profile, generate_docx, generate_pdf
 from app.services.job_match_service import (
     batch_score_jobs,
@@ -127,9 +128,9 @@ def create_manual_job(body: JobManualCreate, current_user=Depends(get_current_us
         listing.match_summary = scores[0].get("summary")
 
     # Cover letter + tweaks
-    if not current_user.anthropic_api_key:
-        raise HTTPException(status_code=400, detail="Add your Anthropic API key in Settings to generate cover letters.")
-    result = generate_cover_letter_and_tweaks(job_dict, profile, current_user.full_name, api_key=current_user.anthropic_api_key)
+    if not ai_providers.get_api_key(current_user):
+        raise HTTPException(status_code=400, detail=ai_providers.missing_key_message(current_user, "generate cover letters"))
+    result = generate_cover_letter_and_tweaks(job_dict, profile, current_user.full_name, current_user)
     listing.cover_letter = result.get("cover_letter", "")
     listing.cv_tweaks = json.dumps(result.get("cv_tweaks", []))
 
@@ -167,9 +168,9 @@ def generate_for_job(job_id: UUID, current_user=Depends(get_current_user), db: S
         "location": job.location,
         "description": job.description,
     }
-    if not current_user.anthropic_api_key:
-        raise HTTPException(status_code=400, detail="Add your Anthropic API key in Settings to generate cover letters.")
-    result = generate_cover_letter_and_tweaks(job_dict, profile, current_user.full_name, api_key=current_user.anthropic_api_key)
+    if not ai_providers.get_api_key(current_user):
+        raise HTTPException(status_code=400, detail=ai_providers.missing_key_message(current_user, "generate cover letters"))
+    result = generate_cover_letter_and_tweaks(job_dict, profile, current_user.full_name, current_user)
 
     job.cover_letter = result.get("cover_letter", "")
     job.cv_tweaks = json.dumps(result.get("cv_tweaks", []))
@@ -201,9 +202,9 @@ def tailored_cv(
         "description": job.description,
     }
 
-    if not current_user.anthropic_api_key:
-        raise HTTPException(status_code=400, detail="Add your Anthropic API key in Settings to generate a tailored CV.")
-    tailored_data = generate_tailored_cv_data(job_dict, profile, current_user.full_name, api_key=current_user.anthropic_api_key)
+    if not ai_providers.get_api_key(current_user):
+        raise HTTPException(status_code=400, detail=ai_providers.missing_key_message(current_user, "generate a tailored CV"))
+    tailored_data = generate_tailored_cv_data(job_dict, profile, current_user.full_name, current_user)
     fake_profile = build_tailored_profile(
         profile, tailored_data, current_user.full_name, current_user.email
     )

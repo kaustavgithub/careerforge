@@ -17,6 +17,10 @@ class User(Base):
     full_name = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     anthropic_api_key = Column(String, nullable=True)
+    openai_api_key = Column(String, nullable=True)
+    gemini_api_key = Column(String, nullable=True)
+    ai_provider = Column(String, nullable=False, default="anthropic", server_default="anthropic")
+    ai_model = Column(String, nullable=True)
     use_local_ai = Column(Boolean, nullable=False, default=True, server_default="true")
 
     profile = relationship("Profile", back_populates="user", uselist=False, cascade="all, delete-orphan")

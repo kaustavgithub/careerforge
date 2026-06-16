@@ -1,8 +1,37 @@
 import { useEffect, useRef, useState } from 'react'
 import api from '../api/client'
 
+const PROVIDERS = [
+  {
+    value: 'anthropic',
+    label: 'Anthropic',
+    keyField: 'anthropic_api_key',
+    placeholder: 'sk-ant-api03-…',
+    models: ['claude-sonnet-4-6', 'claude-opus-4-8', 'claude-haiku-4-5-20251001'],
+  },
+  {
+    value: 'openai',
+    label: 'OpenAI',
+    keyField: 'openai_api_key',
+    placeholder: 'sk-…',
+    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4.1-mini'],
+  },
+  {
+    value: 'gemini',
+    label: 'Google Gemini',
+    keyField: 'gemini_api_key',
+    placeholder: 'AIza…',
+    models: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-flash'],
+  },
+]
+
+const CUSTOM_MODEL = '__custom__'
+
 export default function SettingsModal({ onClose }) {
-  const [apiKey, setApiKey] = useState('')
+  const [provider, setProvider] = useState('anthropic')
+  const [keys, setKeys] = useState({ anthropic_api_key: '', openai_api_key: '', gemini_api_key: '' })
+  const [model, setModel] = useState('')
+  const [customModel, setCustomModel] = useState('')
   const [showKey, setShowKey] = useState(false)
   const [useLocalAi, setUseLocalAi] = useState(true)
   const [loading, setLoading] = useState(true)
@@ -10,9 +39,25 @@ export default function SettingsModal({ onClose }) {
   const [msg, setMsg] = useState(null)
   const overlayRef = useRef(null)
 
+  const activeProvider = PROVIDERS.find(p => p.value === provider) || PROVIDERS[0]
+  const isCustomModel = model === CUSTOM_MODEL
+
   useEffect(() => {
     api.get('/settings').then(r => {
-      setApiKey(r.data.anthropic_api_key || '')
+      setKeys({
+        anthropic_api_key: r.data.anthropic_api_key || '',
+        openai_api_key: r.data.openai_api_key || '',
+        gemini_api_key: r.data.gemini_api_key || '',
+      })
+      setProvider(r.data.ai_provider || 'anthropic')
+      const savedModel = r.data.ai_model || ''
+      const knownModels = PROVIDERS.find(p => p.value === (r.data.ai_provider || 'anthropic'))?.models || []
+      if (savedModel && !knownModels.includes(savedModel)) {
+        setModel(CUSTOM_MODEL)
+        setCustomModel(savedModel)
+      } else {
+        setModel(savedModel)
+      }
       setUseLocalAi(r.data.use_local_ai !== false)
     }).finally(() => setLoading(false))
   }, [])
@@ -21,12 +66,22 @@ export default function SettingsModal({ onClose }) {
     if (e.target === overlayRef.current) onClose()
   }
 
+  function handleProviderChange(value) {
+    setProvider(value)
+    setModel('')
+    setCustomModel('')
+  }
+
   async function save() {
     setSaving(true)
     setMsg(null)
     try {
       await api.put('/settings', {
-        anthropic_api_key: apiKey.trim() || null,
+        anthropic_api_key: keys.anthropic_api_key.trim() || null,
+        openai_api_key: keys.openai_api_key.trim() || null,
+        gemini_api_key: keys.gemini_api_key.trim() || null,
+        ai_provider: provider,
+        ai_model: (isCustomModel ? customModel.trim() : model.trim()) || null,
         use_local_ai: useLocalAi,
       })
       setMsg({ ok: true, text: 'Settings saved.' })
@@ -47,6 +102,22 @@ export default function SettingsModal({ onClose }) {
     fontSize: '0.875rem',
     outline: 'none',
     fontFamily: 'monospace',
+  }
+
+  const selectStyle = {
+    width: '100%',
+    padding: '0.6rem 0.85rem',
+    borderRadius: '0.6rem',
+    background: 'var(--input-bg)',
+    border: '1px solid var(--input-border)',
+    color: 'var(--input-color)',
+    fontSize: '0.875rem',
+    outline: 'none',
+  }
+
+  const labelStyle = {
+    display: 'block', fontSize: '0.8rem', fontWeight: 600,
+    color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em',
   }
 
   return (
@@ -90,24 +161,29 @@ export default function SettingsModal({ onClose }) {
           </div>
         ) : (
           <>
-            {/* API Key Section */}
+            {/* AI Provider Section */}
             <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{
-                display: 'block', fontSize: '0.8rem', fontWeight: 600,
-                color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em',
-              }}>
-                Anthropic API Key
-              </label>
+              <label style={labelStyle}>AI Provider</label>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-faint)', margin: '0 0 0.6rem' }}>
-                Your personal key is used for all AI features (cover letter, learning plan, tailored CV).
-                Falls back to the server default if left blank.
+                Choose which AI provider powers cover letters, tailored CVs, learning plans, and CV parsing.
+                Your key for each provider is remembered even after switching.
               </p>
-              <div style={{ position: 'relative' }}>
+              <select
+                value={provider}
+                onChange={e => handleProviderChange(e.target.value)}
+                style={{ ...selectStyle, marginBottom: '0.75rem' }}
+              >
+                {PROVIDERS.map(p => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+
+              <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
                 <input
                   type={showKey ? 'text' : 'password'}
-                  value={apiKey}
-                  onChange={e => setApiKey(e.target.value)}
-                  placeholder="sk-ant-api03-…"
+                  value={keys[activeProvider.keyField]}
+                  onChange={e => setKeys(k => ({ ...k, [activeProvider.keyField]: e.target.value }))}
+                  placeholder={activeProvider.placeholder}
                   style={{ ...inputStyle, paddingRight: '3rem' }}
                 />
                 <button
@@ -121,6 +197,27 @@ export default function SettingsModal({ onClose }) {
                   {showKey ? 'Hide' : 'Show'}
                 </button>
               </div>
+
+              <select
+                value={model}
+                onChange={e => setModel(e.target.value)}
+                style={{ ...selectStyle, marginBottom: isCustomModel ? '0.5rem' : 0 }}
+              >
+                <option value="">Default model</option>
+                {activeProvider.models.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+                <option value={CUSTOM_MODEL}>Custom…</option>
+              </select>
+              {isCustomModel && (
+                <input
+                  type="text"
+                  value={customModel}
+                  onChange={e => setCustomModel(e.target.value)}
+                  placeholder="exact model id, e.g. gpt-5"
+                  style={inputStyle}
+                />
+              )}
             </div>
 
             {/* AI Mode Section */}
@@ -141,7 +238,7 @@ export default function SettingsModal({ onClose }) {
                 {
                   value: false,
                   title: 'Use AI everywhere',
-                  desc: 'Skill gap analysis uses Claude Haiku for smarter results. All features use your API key — requires a valid key.',
+                  desc: 'Skill gap analysis uses your selected AI provider for smarter results. All features use your API key — requires a valid key.',
                 },
               ].map(opt => (
                 <div

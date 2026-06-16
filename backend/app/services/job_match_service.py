@@ -1,10 +1,7 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-import anthropic
-
-def _get_client(api_key: str) -> anthropic.Anthropic:
-    return anthropic.Anthropic(api_key=api_key)
+from app.services import ai_providers
 
 
 def _build_profile_summary(profile, full_name: str) -> str:
@@ -105,10 +102,10 @@ def batch_score_jobs(jobs: List[Dict[str, Any]], profile, full_name: str) -> Lis
     return results
 
 
-def generate_tailored_cv_data(job: Dict[str, Any], profile, full_name: str, api_key: str = "") -> Dict[str, Any]:
+def generate_tailored_cv_data(job: Dict[str, Any], profile, full_name: str, user) -> Dict[str, Any]:
     """
-    Ask Claude Sonnet to rewrite the candidate's CV content to maximise ATS
-    score for this specific job. Returns a dict with tailored headline,
+    Ask the configured AI provider to rewrite the candidate's CV content to
+    maximise ATS score for this specific job. Returns a dict with tailored headline,
     summary, experiences (rewritten bullets) and skill_groups (reordered).
     Dates / companies / titles are never changed — only descriptions & summary.
     """
@@ -158,20 +155,10 @@ Return ONLY valid JSON (no markdown fences):
   ]
 }}"""
 
-    message = _get_client(api_key).messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=3000,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    raw = message.content[0].text
-    start = raw.find("{")
-    end = raw.rfind("}")
-    if start == -1 or end == -1:
-        raise ValueError("No JSON in Claude response for tailored CV")
-    return json.loads(raw[start: end + 1])
+    return ai_providers.complete_json(prompt, user, tier="smart", max_tokens=3000)
 
 
-def generate_cover_letter_and_tweaks(job: Dict[str, Any], profile, full_name: str, api_key: str = "") -> Dict[str, Any]:
+def generate_cover_letter_and_tweaks(job: Dict[str, Any], profile, full_name: str, user) -> Dict[str, Any]:
     """
     Generate a tailored cover letter + CV tweaks for a single job.
     Returns {cover_letter: str, cv_tweaks: list[str]}.
@@ -201,14 +188,4 @@ Return ONLY valid JSON (no markdown):
   "cv_tweaks": ["tweak 1", "tweak 2", "tweak 3"]
 }}"""
 
-    message = _get_client(api_key).messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=2048,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    raw = message.content[0].text
-    start = raw.find("{")
-    end = raw.rfind("}")
-    if start == -1 or end == -1:
-        raise ValueError("No JSON in Claude response")
-    return json.loads(raw[start: end + 1])
+    return ai_providers.complete_json(prompt, user, tier="smart", max_tokens=2048)

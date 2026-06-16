@@ -1,8 +1,7 @@
 import re
-import json
 from typing import Any, Dict, List, Optional
 
-import anthropic
+from app.services import ai_providers
 
 # ---------------------------------------------------------------------------
 # Local skill dictionary — (canonical_name, category, [aliases…])
@@ -133,8 +132,8 @@ for _name, _cat, _aliases in _SKILLS:
     _SKILL_PATTERNS.append((_name, _cat, _pat))
 
 
-def _extract_skill_gaps_claude(jobs: List[Any], profile, api_key: Optional[str]) -> List[Dict[str, Any]]:
-    """Claude Haiku-powered skill gap extraction (used when ai_mode='api')."""
+def _extract_skill_gaps_ai(jobs: List[Any], profile, user) -> List[Dict[str, Any]]:
+    """AI-powered skill gap extraction using the user's configured provider (used when ai_mode='api')."""
     existing_skills = ", ".join(s.name for s in (profile.skills or []))
     combined_text = "\n\n".join(
         f"[{j.title} at {j.company} | score {j.match_score or 50}]\n{(j.description or '')[:800]}"
@@ -160,31 +159,24 @@ Return ONLY valid JSON — a list of objects, sorted by importance (most-needed 
 ]
 Only include skills the candidate does NOT already have. List at most 15 skills."""
 
-    client = anthropic.Anthropic(api_key=api_key)
-    msg = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=2000,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    raw = msg.content[0].text
-    start, end = raw.find("["), raw.rfind("]")
-    if start == -1 or end == -1:
+    try:
+        return ai_providers.complete_json(prompt, user, tier="fast", max_tokens=2000)
+    except ValueError:
         return []
-    return json.loads(raw[start: end + 1])
 
 
-def extract_skill_gaps(jobs: List[Any], profile, use_local: bool = True, api_key: Optional[str] = None) -> List[Dict[str, Any]]:
+def extract_skill_gaps(jobs: List[Any], profile, use_local: bool = True, user=None) -> List[Dict[str, Any]]:
     """
     Identifies missing skills from job descriptions.
     use_local=True → fast regex scan (default, free).
-    use_local=False → Claude Haiku for smarter extraction (requires api_key).
+    use_local=False → AI provider for smarter extraction (requires an API key).
     gap_score = frequency × avg_job_score  (higher = more important to learn)
     """
     if not jobs:
         return []
 
-    if not use_local and api_key:
-        return _extract_skill_gaps_claude(jobs, profile, api_key)
+    if not use_local and user is not None and ai_providers.get_api_key(user):
+        return _extract_skill_gaps_ai(jobs, profile, user)
 
     existing_lower = {s.name.lower() for s in (profile.skills or [])}
 
@@ -236,9 +228,8 @@ def extract_skill_gaps(jobs: List[Any], profile, use_local: bool = True, api_key
     return result
 
 
-def generate_learning_plan(skill: str, gap_jobs: List[Dict], profile, full_name: str, api_key: Optional[str] = None) -> Dict[str, Any]:
-    """Generate a structured learning plan via Claude Sonnet (requires valid API key)."""
-    client = anthropic.Anthropic(api_key=api_key)
+def generate_learning_plan(skill: str, gap_jobs: List[Dict], profile, full_name: str, user) -> Dict[str, Any]:
+    """Generate a structured learning plan via the user's configured AI provider (requires a valid API key)."""
     existing_skills = ", ".join(s.name for s in (profile.skills or []))
     headline = profile.headline or ""
     job_context = ", ".join(f"{j['title']} at {j['company']}" for j in gap_jobs[:5])
@@ -280,16 +271,7 @@ Return ONLY valid JSON (no markdown):
   "connection": "One paragraph on how {skill} builds on their existing skills like those listed above"
 }}"""
 
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=2000,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    raw = message.content[0].text
-    start, end = raw.find("{"), raw.rfind("}")
-    if start == -1 or end == -1:
-        raise ValueError("No JSON in Claude response")
-    return json.loads(raw[start: end + 1])
+    return ai_providers.complete_json(prompt, user, tier="smart", max_tokens=2000)
 
 
 def build_copy_prompt(skill: str, gap_jobs: List[Dict], profile, full_name: str) -> str:

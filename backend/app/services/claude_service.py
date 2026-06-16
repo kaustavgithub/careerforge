@@ -1,8 +1,6 @@
-import json
-import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-import anthropic
+from app.services import ai_providers
 
 PARSE_PROMPT = """You are an expert CV parser. Extract all structured information from the CV text below and return ONLY valid JSON — no markdown fences, no commentary.
 
@@ -61,23 +59,5 @@ CV TEXT:
 """
 
 
-def parse_cv_text(cv_text: str, api_key: Optional[str] = None) -> Dict[str, Any]:
-    client = anthropic.Anthropic(api_key=api_key)
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=4096,
-        messages=[
-            {
-                "role": "user",
-                "content": PARSE_PROMPT + cv_text,
-            }
-        ],
-    )
-    raw = message.content[0].text
-    # Extract the JSON object by finding outermost { } boundaries,
-    # which handles any preamble text or markdown fences Claude may add.
-    start = raw.find("{")
-    end = raw.rfind("}")
-    if start == -1 or end == -1:
-        raise ValueError(f"No JSON object in Claude response: {raw[:200]}")
-    return json.loads(raw[start : end + 1])
+def parse_cv_text(cv_text: str, user) -> Dict[str, Any]:
+    return ai_providers.complete_json(PARSE_PROMPT + cv_text, user, tier="smart", max_tokens=4096)
