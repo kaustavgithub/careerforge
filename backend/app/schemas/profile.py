@@ -54,6 +54,20 @@ class CertificationSchema(BaseModel):
         from_attributes = True
 
 
+class ProjectSchema(BaseModel):
+    id: Optional[UUID] = None
+    name: str
+    description: Optional[str] = None
+    technologies: Optional[str] = None
+    url: Optional[str] = None
+    repo_url: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+
+    class Config:
+        from_attributes = True
+
+
 class ProfileSchema(BaseModel):
     id: Optional[UUID] = None
     user_id: Optional[UUID] = None
@@ -69,6 +83,7 @@ class ProfileSchema(BaseModel):
     educations: List[EducationSchema] = []
     skills: List[SkillSchema] = []
     certifications: List[CertificationSchema] = []
+    projects: List[ProjectSchema] = []
 
     class Config:
         from_attributes = True
@@ -91,3 +106,4 @@ class ProfileUpdateRequest(BaseModel):
     educations: List[EducationSchema] = []
     skills: List[SkillSchema] = []
     certifications: List[CertificationSchema] = []
+    projects: List[ProjectSchema] = []

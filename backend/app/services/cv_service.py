@@ -59,6 +59,7 @@ def build_tailored_profile(profile, tailored: Dict[str, Any], full_name: str, em
         educations=list(profile.educations or []),
         skills=tailored_skills or list(profile.skills or []),
         certifications=list(profile.certifications or []),
+        projects=list(profile.projects or []),
     )
 
 
@@ -167,6 +168,30 @@ def generate_pdf(profile: Profile) -> bytes:
                 story.append(Paragraph(" | ".join(meta), meta_style))
             story.append(Spacer(1, 1 * mm))
 
+    if profile.projects:
+        story.append(Paragraph("PERSONAL PROJECTS", section_style))
+        for proj in profile.projects:
+            story.append(Paragraph(proj.name, sub_style))
+            meta = []
+            date_range = _fmt_date(proj.start_date)
+            if proj.end_date:
+                date_range += f" – {_fmt_date(proj.end_date)}"
+            if date_range.strip(" –"):
+                meta.append(date_range)
+            if proj.technologies:
+                meta.append(proj.technologies)
+            if meta:
+                story.append(Paragraph(" | ".join(meta), meta_style))
+            if proj.description:
+                for line in proj.description.split("\n"):
+                    line = line.strip()
+                    if line:
+                        story.append(Paragraph(f"• {line}" if not line.startswith("•") else line, body_style))
+            links = [link for link in [proj.url, proj.repo_url] if link]
+            if links:
+                story.append(Paragraph(" | ".join(links), meta_style))
+            story.append(Spacer(1, 2 * mm))
+
     if profile.skills:
         story.append(Paragraph("SKILLS", section_style))
         by_category: dict = {}
@@ -259,6 +284,25 @@ def generate_docx(profile: Profile) -> bytes:
                 meta.append(date_range)
             if meta:
                 doc.add_paragraph(" | ".join(meta))
+
+    if profile.projects:
+        add_section("PERSONAL PROJECTS")
+        for proj in profile.projects:
+            p = doc.add_paragraph()
+            p.add_run(proj.name).bold = True
+            date_range = _fmt_date(proj.start_date)
+            if proj.end_date:
+                date_range += f" – {_fmt_date(proj.end_date)}"
+            meta = [x for x in [date_range.strip(" –") or None, proj.technologies] if x]
+            if meta:
+                m = doc.add_paragraph(" | ".join(meta))
+                m.runs[0].font.color.rgb = RGBColor(0x66, 0x66, 0x66)
+                m.runs[0].font.italic = True
+            if proj.description:
+                doc.add_paragraph(proj.description)
+            links = [link for link in [proj.url, proj.repo_url] if link]
+            if links:
+                doc.add_paragraph(" | ".join(links))
 
     if profile.skills:
         add_section("SKILLS")

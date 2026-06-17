@@ -49,8 +49,21 @@ Return JSON matching this exact schema (omit fields you cannot find, use null fo
       "expiry_date": "YYYY-MM-DD or null",
       "url": "string or null"
     }
+  ],
+  "projects": [
+    {
+      "name": "string",
+      "description": "string or null",
+      "technologies": "comma-separated string or null",
+      "url": "string or null",
+      "repo_url": "string or null",
+      "start_date": "YYYY-MM-DD or null",
+      "end_date": "YYYY-MM-DD or null"
+    }
   ]
 }
+
+Look for a "Personal Projects" / "Projects" / "Side Projects" section in the CV and extract every entry into the projects array — these are distinct from work_experiences.
 
 For dates: if only year is available use YYYY-01-01; if year+month use YYYY-MM-01.
 Set is_current=true for roles with no end date that appear to be ongoing.

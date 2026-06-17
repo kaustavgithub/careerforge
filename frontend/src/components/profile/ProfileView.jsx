@@ -78,11 +78,12 @@ export default function ProfileView({ profile, fullName }) {
   const isEmpty =
     !profile.headline && !profile.summary &&
     !profile.work_experiences.length && !profile.educations.length &&
-    !profile.skills.length && !profile.certifications.length
+    !profile.skills.length && !profile.certifications.length && !profile.projects.length
 
   const stats = [
     profile.work_experiences.length > 0 && { n: profile.work_experiences.length, label: 'Roles' },
     profile.skills.length > 0            && { n: profile.skills.length,            label: 'Skills' },
+    profile.projects.length > 0          && { n: profile.projects.length,          label: 'Projects' },
     profile.certifications.length > 0    && { n: profile.certifications.length,    label: 'Certs' },
     profile.educations.length > 0        && { n: profile.educations.length,        label: 'Degrees' },
   ].filter(Boolean)
@@ -388,6 +389,68 @@ export default function ProfileView({ profile, fullName }) {
                         )}
                       </div>
                     </div>
+                  </Glass>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ══ PROJECTS ═══════════════════════════════════════════════ */}
+      {profile.projects.length > 0 && (
+        <section className="px-6 sm:px-16 lg:px-24 py-24" style={{ borderTop: '1px solid var(--border-dim)' }}>
+          <div className="max-w-7xl mx-auto">
+            <Reveal>
+              <SectionHeading label="Personal Projects" color="#22d3ee" />
+            </Reveal>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {profile.projects.map((proj, i) => (
+                <Reveal key={proj.id || i} delay={i * 70}>
+                  <Glass className="h-full p-6 flex flex-col">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-black" style={{ color: 'var(--text-primary)' }}>{proj.name}</h3>
+                      {(proj.start_date || proj.end_date) && (
+                        <span className="font-mono text-xs px-3 py-1.5 rounded-full shrink-0"
+                          style={{ color: 'var(--text-muted)', background: 'var(--bg-card-dim)', border: '1px solid var(--border-dim)' }}>
+                          {formatDate(proj.start_date)}{proj.end_date && ` – ${formatDate(proj.end_date)}`}
+                        </span>
+                      )}
+                    </div>
+                    {proj.technologies && (
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                        {proj.technologies.split(',').map((t, ti) => t.trim() && (
+                          <span key={ti} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                            {t.trim()}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {proj.description && (
+                      <p className="text-sm mt-3 leading-relaxed" style={{ color: 'var(--text-muted)' }}>{proj.description}</p>
+                    )}
+                    {(proj.url || proj.repo_url) && (
+                      <div className="flex flex-wrap gap-4 mt-auto pt-4">
+                        {proj.url && (
+                          <a href={proj.url} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs font-bold text-indigo-400 hover:text-indigo-300 transition">
+                            Live demo
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        )}
+                        {proj.repo_url && (
+                          <a href={proj.repo_url} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs font-bold text-indigo-400 hover:text-indigo-300 transition">
+                            Source
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </Glass>
                 </Reveal>
               ))}

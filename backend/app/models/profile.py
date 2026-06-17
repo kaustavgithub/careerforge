@@ -26,6 +26,7 @@ class Profile(Base):
     educations = relationship("Education", back_populates="profile", cascade="all, delete-orphan", order_by="Education.start_date.desc()")
     skills = relationship("Skill", back_populates="profile", cascade="all, delete-orphan")
     certifications = relationship("Certification", back_populates="profile", cascade="all, delete-orphan")
+    projects = relationship("Project", back_populates="profile", cascade="all, delete-orphan", order_by="Project.start_date.desc()")
 
 
 class WorkExperience(Base):
@@ -83,3 +84,19 @@ class Certification(Base):
     url = Column(String)
 
     profile = relationship("Profile", back_populates="certifications")
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id = Column(UUID(as_uuid=True), ForeignKey("profiles.id"), nullable=False)
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    technologies = Column(String)
+    url = Column(String)
+    repo_url = Column(String)
+    start_date = Column(Date)
+    end_date = Column(Date)
+
+    profile = relationship("Profile", back_populates="projects")

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models.profile import Certification, Education, Profile, Skill, WorkExperience
+from app.models.profile import Certification, Education, Profile, Project, Skill, WorkExperience
 from app.models.user import User
 from app.schemas.profile import ProfileSchema
 from app.services import ai_providers
@@ -95,6 +95,7 @@ async def parse_cv(
     db.query(Education).filter(Education.profile_id == profile.id).delete()
     db.query(Skill).filter(Skill.profile_id == profile.id).delete()
     db.query(Certification).filter(Certification.profile_id == profile.id).delete()
+    db.query(Project).filter(Project.profile_id == profile.id).delete()
 
     for exp in parsed.get("work_experiences", []):
         db.add(WorkExperience(
@@ -135,6 +136,18 @@ async def parse_cv(
             issue_date=_parse_date(cert.get("issue_date")),
             expiry_date=_parse_date(cert.get("expiry_date")),
             url=cert.get("url"),
+        ))
+
+    for proj in parsed.get("projects", []):
+        db.add(Project(
+            profile_id=profile.id,
+            name=proj.get("name") or "",
+            description=proj.get("description"),
+            technologies=proj.get("technologies"),
+            url=proj.get("url"),
+            repo_url=proj.get("repo_url"),
+            start_date=_parse_date(proj.get("start_date")),
+            end_date=_parse_date(proj.get("end_date")),
         ))
 
     db.commit()

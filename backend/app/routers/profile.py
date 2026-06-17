@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models.profile import Certification, Education, Profile, Skill, WorkExperience
+from app.models.profile import Certification, Education, Profile, Project, Skill, WorkExperience
 from app.models.user import User
 from app.schemas.profile import ProfileSchema, ProfileUpdateRequest, PublicProfileSchema
 
@@ -62,6 +62,7 @@ def update_profile(
     db.query(Education).filter(Education.profile_id == profile.id).delete()
     db.query(Skill).filter(Skill.profile_id == profile.id).delete()
     db.query(Certification).filter(Certification.profile_id == profile.id).delete()
+    db.query(Project).filter(Project.profile_id == profile.id).delete()
 
     for exp in body.work_experiences:
         db.add(WorkExperience(profile_id=profile.id, **exp.model_dump(exclude={"id"})))
@@ -71,6 +72,8 @@ def update_profile(
         db.add(Skill(profile_id=profile.id, **skill.model_dump(exclude={"id"})))
     for cert in body.certifications:
         db.add(Certification(profile_id=profile.id, **cert.model_dump(exclude={"id"})))
+    for proj in body.projects:
+        db.add(Project(profile_id=profile.id, **proj.model_dump(exclude={"id"})))
 
     db.commit()
     db.refresh(profile)
