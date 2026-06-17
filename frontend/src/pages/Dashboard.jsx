@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import api from '../api/client'
 import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
+import { useAISettings } from '../context/AISettingsContext'
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const { aiConfigured } = useAISettings()
   const navigate = useNavigate()
   const fileRef = useRef(null)
   const [file, setFile] = useState(null)
@@ -117,6 +119,17 @@ export default function Dashboard() {
           )}
         </div>
 
+        {!aiConfigured && (
+          <div className="mt-4 rounded-xl px-4 py-3 text-sm"
+            style={{
+              background: 'rgba(99,102,241,0.08)',
+              border: '1px solid rgba(99,102,241,0.2)',
+              color: 'var(--text-muted)',
+            }}>
+            💡 Add an API key in Settings (top-right menu) to enable AI-powered CV parsing.
+          </div>
+        )}
+
         {error && (
           <div className="mt-4 rounded-xl px-4 py-3 text-sm"
             style={{
@@ -131,7 +144,8 @@ export default function Dashboard() {
         <div className="mt-5 flex gap-3">
           <button
             onClick={handleParse}
-            disabled={!file || loading}
+            disabled={!file || loading || !aiConfigured}
+            title={!aiConfigured ? 'Add an API key in Settings to enable AI CV parsing' : undefined}
             className="flex-1 py-3.5 rounded-xl text-sm font-bold text-white transition disabled:opacity-40 flex items-center justify-center gap-2"
             style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 4px 24px rgba(99,102,241,0.30)' }}
           >
@@ -143,7 +157,7 @@ export default function Dashboard() {
                 </svg>
                 Analysing with Claude AI…
               </>
-            ) : '✨ Parse CV with Claude AI'}
+            ) : '✨ Parse CV with AI'}
           </button>
           <button
             onClick={() => navigate('/profile')}

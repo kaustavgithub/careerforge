@@ -4,10 +4,13 @@ import JobCard from '../components/jobs/JobCard'
 import GenerateModal from '../components/jobs/GenerateModal'
 import TrackerPanel from '../components/jobs/TrackerPanel'
 import Navbar from '../components/Navbar'
+import { useAISettings } from '../context/AISettingsContext'
 
 export default function Jobs() {
+  const { settings: aiSettings, aiConfigured } = useAISettings()
   const [query, setQuery] = useState('')
   const [location, setLocation] = useState('')
+  const [useAi, setUseAi] = useState(false)
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(false)
   const [initialLoad, setInitialLoad] = useState(true)
@@ -22,6 +25,10 @@ export default function Jobs() {
     }).catch(() => setInitialLoad(false))
   }, [])
 
+  useEffect(() => {
+    if (aiSettings) setUseAi(aiSettings.use_local_ai === false && aiConfigured)
+  }, [aiSettings, aiConfigured])
+
   async function handleSearch(e) {
     e.preventDefault()
     if (!query.trim()) return
@@ -32,6 +39,7 @@ export default function Jobs() {
         query: query.trim(),
         location: location.trim() || null,
         limit: 20,
+        use_ai: useAi,
       })
       setJobs(prev => {
         const newIds = new Set(data.map(j => j.id))
@@ -101,62 +109,113 @@ export default function Jobs() {
             borderRadius: '1rem',
             padding: '1.25rem',
             marginBottom: '2rem',
-            display: 'flex',
-            gap: '0.75rem',
-            flexWrap: 'wrap',
-            alignItems: 'center',
           }}>
-            <input
-              ref={searchInput}
-              type="text"
-              placeholder="Job title, skills, keywords…"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              style={{
-                flex: '1 1 240px',
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <input
+                ref={searchInput}
+                type="text"
+                placeholder="Job title, skills, keywords…"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                style={{
+                  flex: '1 1 240px',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--input-border)',
+                  borderRadius: '0.625rem',
+                  padding: '0.6rem 0.875rem',
+                  color: 'var(--input-color)',
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Location (optional)"
+                value={location}
+                onChange={e => setLocation(e.target.value)}
+                style={{
+                  flex: '0 1 180px',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--input-border)',
+                  borderRadius: '0.625rem',
+                  padding: '0.6rem 0.875rem',
+                  color: 'var(--input-color)',
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                }}
+              />
+              <button
+                type="submit"
+                disabled={loading || !query.trim()}
+                style={{
+                  background: loading ? 'rgba(99,102,241,0.3)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '0.625rem',
+                  padding: '0.6rem 1.5rem',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'opacity 0.2s',
+                }}
+              >
+                {loading ? 'Searching…' : 'Search + Rank'}
+              </button>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.625rem',
+              marginTop: '1rem',
+              paddingTop: '0.875rem',
+              borderTop: '1px solid var(--border-dim, var(--border))',
+            }}>
+              <span style={{ color: 'var(--text-faint)', fontSize: '0.78rem' }}>
+                Rank results using:
+              </span>
+              <div style={{
+                display: 'flex',
                 background: 'var(--input-bg)',
                 border: '1px solid var(--input-border)',
                 borderRadius: '0.625rem',
-                padding: '0.6rem 0.875rem',
-                color: 'var(--input-color)',
-                fontSize: '0.875rem',
-                outline: 'none',
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Location (optional)"
-              value={location}
-              onChange={e => setLocation(e.target.value)}
-              style={{
-                flex: '0 1 180px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--input-border)',
-                borderRadius: '0.625rem',
-                padding: '0.6rem 0.875rem',
-                color: 'var(--input-color)',
-                fontSize: '0.875rem',
-                outline: 'none',
-              }}
-            />
-            <button
-              type="submit"
-              disabled={loading || !query.trim()}
-              style={{
-                background: loading ? 'rgba(99,102,241,0.3)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '0.625rem',
-                padding: '0.6rem 1.5rem',
-                fontWeight: 600,
-                fontSize: '0.875rem',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                whiteSpace: 'nowrap',
-                transition: 'opacity 0.2s',
-              }}
-            >
-              {loading ? 'Searching…' : 'Search + Rank'}
-            </button>
+                padding: '0.2rem',
+                gap: '0.2rem',
+              }}>
+                {[
+                  { value: false, label: 'Local matching' },
+                  { value: true, label: 'AI matching' },
+                ].map(opt => {
+                  const isDisabled = opt.value && !aiConfigured
+                  return (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      disabled={isDisabled}
+                      onClick={() => !isDisabled && setUseAi(opt.value)}
+                      title={isDisabled
+                        ? 'Add an API key in Settings to enable AI matching'
+                        : (opt.value ? 'Rank jobs using your configured AI provider' : 'Rank jobs using fast local keyword matching')}
+                      style={{
+                        background: useAi === opt.value ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'transparent',
+                        color: isDisabled ? 'var(--text-faint)' : (useAi === opt.value ? '#fff' : 'var(--text-muted)'),
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        padding: '0.4rem 0.75rem',
+                        fontWeight: 600,
+                        fontSize: '0.78rem',
+                        cursor: isDisabled ? 'not-allowed' : 'pointer',
+                        opacity: isDisabled ? 0.5 : 1,
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
           </form>
 
           {error && (
@@ -210,6 +269,7 @@ export default function Jobs() {
                         <JobCard
                           key={job.id}
                           job={job}
+                          aiConfigured={aiConfigured}
                           onGenerate={handleGenerate}
                           onStatusChange={handleStatusChange}
                           onDelete={handleDelete}

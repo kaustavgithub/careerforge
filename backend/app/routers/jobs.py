@@ -16,6 +16,7 @@ from app.services import ai_providers
 from app.services.cv_service import build_tailored_profile, generate_docx, generate_pdf
 from app.services.job_match_service import (
     batch_score_jobs,
+    batch_score_jobs_with_ai,
     generate_cover_letter_and_tweaks,
     generate_tailored_cv_data,
 )
@@ -44,8 +45,16 @@ def search_and_rank(body: JobSearchRequest, current_user=Depends(get_current_use
     if not raw_jobs:
         return []
 
-    # 2. Score locally — keyword matching against profile, no API needed
-    scores_list = batch_score_jobs(raw_jobs, profile, current_user.full_name)
+    # 2. Score — either via AI (if requested) or local keyword matching
+    if body.use_ai:
+        if not ai_providers.get_api_key(current_user):
+            raise HTTPException(status_code=400, detail=ai_providers.missing_key_message(current_user, "rank jobs with AI"))
+        try:
+            scores_list = batch_score_jobs_with_ai(raw_jobs, profile, current_user.full_name, current_user)
+        except Exception:
+            scores_list = batch_score_jobs(raw_jobs, profile, current_user.full_name)
+    else:
+        scores_list = batch_score_jobs(raw_jobs, profile, current_user.full_name)
     score_map = {s["id"]: s for s in scores_list}
 
     # 3. Upsert into DB

@@ -3,7 +3,7 @@ import api from '../../api/client'
 
 const TYPE_ICON = { course: '🎓', book: '📚', docs: '📄', video: '▶️', practice: '🛠' }
 
-export default function LearnModal({ skill, jobs, onClose }) {
+export default function LearnModal({ skill, jobs, aiConfigured, onClose }) {
   const [plan, setPlan] = useState(null)
   const [loading, setLoading] = useState(false)
   const [promptCopied, setPromptCopied] = useState(false)
@@ -60,13 +60,19 @@ export default function LearnModal({ skill, jobs, onClose }) {
         {/* Action buttons */}
         {!plan && (
           <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-            <button onClick={generate} disabled={loading} style={{
-              background: loading ? 'rgba(99,102,241,0.2)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              color: loading ? 'var(--text-faint)' : '#fff',
-              border: 'none', borderRadius: '8px',
-              padding: '0.6rem 1.25rem', fontSize: '0.85rem', fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer',
-            }}>
+            <button
+              onClick={generate}
+              disabled={loading || !aiConfigured}
+              title={!aiConfigured ? 'Add an API key in Settings to enable AI learning plans' : undefined}
+              style={{
+                background: loading ? 'rgba(99,102,241,0.2)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                color: loading ? 'var(--text-faint)' : '#fff',
+                border: 'none', borderRadius: '8px',
+                padding: '0.6rem 1.25rem', fontSize: '0.85rem', fontWeight: 600,
+                cursor: (loading || !aiConfigured) ? 'not-allowed' : 'pointer',
+                opacity: aiConfigured ? 1 : 0.5,
+              }}
+            >
               {loading ? 'Generating plan…' : '✦ Generate Learning Plan with AI'}
             </button>
             <button onClick={copyPrompt} style={{

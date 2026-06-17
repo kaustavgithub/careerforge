@@ -102,6 +102,59 @@ def batch_score_jobs(jobs: List[Dict[str, Any]], profile, full_name: str) -> Lis
     return results
 
 
+def batch_score_jobs_with_ai(jobs: List[Dict[str, Any]], profile, full_name: str, user) -> List[Dict[str, Any]]:
+    """Score a list of jobs using the user's configured AI provider in a single call.
+    Returns [{id, score, summary}]. Raises if the AI call or parsing fails."""
+    profile_text = _build_profile_summary(profile, full_name)
+
+    listings = [
+        {
+            "id": job["external_id"],
+            "title": job.get("title", ""),
+            "company": job.get("company", ""),
+            "location": job.get("location", ""),
+            "description": (job.get("description") or "")[:1500],
+        }
+        for job in jobs
+    ]
+
+    prompt = f"""You are an expert recruiter matching a candidate to job listings.
+
+CANDIDATE PROFILE:
+{profile_text}
+
+JOB LISTINGS (JSON array):
+{json.dumps(listings, ensure_ascii=False)}
+
+For each job, give a match score from 0-100 based on how well the candidate's skills,
+experience and location fit the role, and a one-sentence summary explaining the score.
+
+Return ONLY a valid JSON array (no markdown fences), one entry per job, in the same order:
+[
+  {{ "id": "job id from input", "score": 0-100, "summary": "one sentence" }}
+]"""
+
+    raw_results = ai_providers.complete_json(prompt, user, tier="fast", max_tokens=400 + 60 * len(listings))
+
+    score_map = {str(r["id"]): r for r in raw_results if "id" in r}
+    results = []
+    for job in jobs:
+        ext_id = job["external_id"]
+        entry = score_map.get(str(ext_id))
+        if entry:
+            results.append({
+                "id": ext_id,
+                "score": max(0, min(100, int(entry.get("score", 0)))),
+                "summary": entry.get("summary", ""),
+            })
+        else:
+            score, summary = score_job_locally(job, profile)
+            results.append({"id": ext_id, "score": score, "summary": summary})
+
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return results
+
+
 def generate_tailored_cv_data(job: Dict[str, Any], profile, full_name: str, user) -> Dict[str, Any]:
     """
     Ask the configured AI provider to rewrite the candidate's CV content to

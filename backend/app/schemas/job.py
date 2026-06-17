@@ -9,6 +9,7 @@ class JobSearchRequest(BaseModel):
     query: str
     location: Optional[str] = None
     limit: int = 20
+    use_ai: bool = False
 
 
 class JobManualCreate(BaseModel):

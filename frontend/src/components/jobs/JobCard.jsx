@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import api from '../../api/client'
+import AiConfirmModal from './AiConfirmModal'
 
 const STATUS_COLORS = {
   new: 'rgba(99,102,241,0.15)',
@@ -29,13 +30,25 @@ function ScoreBadge({ score }) {
   )
 }
 
-export default function JobCard({ job, onGenerate, onStatusChange, onDelete }) {
+export default function JobCard({ job, aiConfigured, onGenerate, onStatusChange, onDelete }) {
   const [expanded, setExpanded] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [cvLoading, setCvLoading] = useState(null)
   const [translating, setTranslating] = useState(false)
   const [translatedDesc, setTranslatedDesc] = useState(null)
   const [detectedLang, setDetectedLang] = useState(null)
+  const [tailorOpen, setTailorOpen] = useState(false)
+  const [pendingAction, setPendingAction] = useState(null)
+  const tailorRef = useRef(null)
+
+  useEffect(() => {
+    if (!tailorOpen) return
+    function onOutsideClick(e) {
+      if (tailorRef.current && !tailorRef.current.contains(e.target)) setTailorOpen(false)
+    }
+    document.addEventListener('mousedown', onOutsideClick, true)
+    return () => document.removeEventListener('mousedown', onOutsideClick, true)
+  }, [tailorOpen])
 
   async function handleTranslate(e) {
     e.stopPropagation()
@@ -52,10 +65,15 @@ export default function JobCard({ job, onGenerate, onStatusChange, onDelete }) {
     } catch { } finally { setTranslating(false) }
   }
 
-  async function handleGenerate(e) {
-    e.stopPropagation()
+  async function runGenerate() {
     setGenerating(true)
     try { await onGenerate(job.id) } finally { setGenerating(false) }
+  }
+
+  function openTailorConfirm(e, { title, run }) {
+    e.stopPropagation()
+    setTailorOpen(false)
+    setPendingAction({ title, run })
   }
 
   async function downloadTailoredCV(format) {
@@ -87,6 +105,8 @@ export default function JobCard({ job, onGenerate, onStatusChange, onDelete }) {
       padding: '1.25rem',
       cursor: 'pointer',
       transition: 'border-color 0.2s, background 0.2s',
+      position: 'relative',
+      zIndex: tailorOpen ? 20 : 1,
     }} onClick={() => setExpanded(v => !v)}>
 
       {/* Header row */}
@@ -178,6 +198,12 @@ export default function JobCard({ job, onGenerate, onStatusChange, onDelete }) {
             </div>
           )}
 
+          {job.match_score >= 90 && (
+            <p style={{ color: 'var(--text-faint)', fontSize: '0.72rem', marginBottom: '0.5rem' }}>
+              💡 Already a strong match ({job.match_score}/100) — tailoring may add limited value. Your existing CV is probably fine.
+            </p>
+          )}
+
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {(job.apply_url || job.apply_email) && (
               <button onClick={handleApply} style={{
@@ -188,35 +214,80 @@ export default function JobCard({ job, onGenerate, onStatusChange, onDelete }) {
                 Apply →
               </button>
             )}
-            <button onClick={handleGenerate} disabled={generating} style={{
-              background: generating ? 'var(--bg-card-dim)' : 'rgba(99,102,241,0.15)',
-              color: generating ? 'var(--text-faint)' : '#818cf8',
-              border: '1px solid rgba(99,102,241,0.25)',
-              borderRadius: '7px', padding: '0.45rem 1rem',
-              fontSize: '0.8rem', fontWeight: 600, cursor: generating ? 'not-allowed' : 'pointer',
-            }}>
-              {generating ? 'Generating…' : job.cover_letter ? '↻ Cover Letter' : '✦ Cover Letter'}
-            </button>
+            <div ref={tailorRef} style={{ position: 'relative' }}>
+              <button
+                onClick={e => { e.stopPropagation(); if (aiConfigured) setTailorOpen(v => !v) }}
+                disabled={!aiConfigured || generating || !!cvLoading}
+                title={!aiConfigured ? 'Add an API key in Settings to enable AI tailoring' : undefined}
+                style={{
+                  background: tailorOpen ? 'rgba(99,102,241,0.25)' : 'rgba(99,102,241,0.15)',
+                  color: '#818cf8',
+                  border: `1px dashed ${tailorOpen ? '#818cf8' : 'rgba(99,102,241,0.45)'}`,
+                  borderRadius: '7px', padding: '0.45rem 0.5rem 0.45rem 1rem',
+                  fontSize: '0.8rem', fontWeight: 600,
+                  cursor: (!aiConfigured || generating || cvLoading) ? 'not-allowed' : 'pointer',
+                  opacity: aiConfigured ? 1 : 0.5,
+                  display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                }}
+              >
+                <span>{generating ? 'Generating…' : cvLoading ? 'Building…' : '✦ Tailor'}</span>
+                <span style={{
+                  display: 'inline-block', transform: tailorOpen ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 0.15s', fontSize: '0.7rem',
+                }}>▾</span>
+              </button>
 
-            <button onClick={() => downloadTailoredCV('pdf')} disabled={!!cvLoading} style={{
-              background: cvLoading === 'pdf' ? 'var(--bg-card-dim)' : 'rgba(16,185,129,0.12)',
-              color: cvLoading === 'pdf' ? 'var(--text-faint)' : '#34d399',
-              border: '1px solid rgba(16,185,129,0.25)',
-              borderRadius: '7px', padding: '0.45rem 1rem',
-              fontSize: '0.8rem', fontWeight: 600, cursor: cvLoading ? 'not-allowed' : 'pointer',
-            }}>
-              {cvLoading === 'pdf' ? 'Building…' : '↓ ATS CV (PDF)'}
-            </button>
-
-            <button onClick={() => downloadTailoredCV('docx')} disabled={!!cvLoading} style={{
-              background: cvLoading === 'docx' ? 'var(--bg-card-dim)' : 'rgba(16,185,129,0.08)',
-              color: cvLoading === 'docx' ? 'var(--text-faint)' : '#34d399',
-              border: '1px solid rgba(16,185,129,0.2)',
-              borderRadius: '7px', padding: '0.45rem 1rem',
-              fontSize: '0.8rem', fontWeight: 600, cursor: cvLoading ? 'not-allowed' : 'pointer',
-            }}>
-              {cvLoading === 'docx' ? 'Building…' : '↓ ATS CV (DOCX)'}
-            </button>
+              {tailorOpen && aiConfigured && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 50,
+                  background: 'var(--modal-bg, var(--bg-card))',
+                  border: '1px solid var(--modal-border, var(--border))',
+                  borderRadius: '0.625rem', padding: '0.35rem',
+                  display: 'flex', flexDirection: 'column', gap: '0.2rem',
+                  minWidth: '180px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                }}>
+                  <button
+                    onClick={e => openTailorConfirm(e, {
+                      title: job.cover_letter ? 'Regenerate cover letter?' : 'Generate cover letter?',
+                      run: runGenerate,
+                    })}
+                    style={{
+                      background: 'transparent', border: 'none', textAlign: 'left',
+                      color: '#818cf8', padding: '0.45rem 0.6rem', borderRadius: '0.4rem',
+                      fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    {job.cover_letter ? '↻ Cover Letter' : '✦ Cover Letter'}
+                  </button>
+                  <button
+                    onClick={e => openTailorConfirm(e, {
+                      title: 'Generate ATS CV (PDF)?',
+                      run: () => downloadTailoredCV('pdf'),
+                    })}
+                    style={{
+                      background: 'transparent', border: 'none', textAlign: 'left',
+                      color: '#34d399', padding: '0.45rem 0.6rem', borderRadius: '0.4rem',
+                      fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    ↓ ATS CV (PDF)
+                  </button>
+                  <button
+                    onClick={e => openTailorConfirm(e, {
+                      title: 'Generate ATS CV (DOCX)?',
+                      run: () => downloadTailoredCV('docx'),
+                    })}
+                    style={{
+                      background: 'transparent', border: 'none', textAlign: 'left',
+                      color: '#34d399', padding: '0.45rem 0.6rem', borderRadius: '0.4rem',
+                      fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    ↓ ATS CV (DOCX)
+                  </button>
+                </div>
+              )}
+            </div>
 
             <button onClick={() => onDelete(job.id)} style={{
               background: 'rgba(239,68,68,0.08)', color: '#f87171',
@@ -227,6 +298,15 @@ export default function JobCard({ job, onGenerate, onStatusChange, onDelete }) {
             </button>
           </div>
         </div>
+      )}
+
+      {pendingAction && (
+        <AiConfirmModal
+          title={pendingAction.title}
+          description="This will call your configured AI provider and consume API tokens from your account."
+          onConfirm={pendingAction.run}
+          onClose={() => setPendingAction(null)}
+        />
       )}
     </div>
   )

@@ -29,9 +29,9 @@ PROVIDER_MODELS = {
         "options": ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"],
     },
     "gemini": {
-        "smart": "gemini-1.5-pro",
-        "fast": "gemini-1.5-flash",
-        "options": ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.0-flash"],
+        "smart": "gemini-2.5-pro",
+        "fast": "gemini-2.5-flash",
+        "options": ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"],
     },
 }
 

@@ -3,8 +3,10 @@ import api from '../api/client'
 import Navbar from '../components/Navbar'
 import SkillGapCard from '../components/learning/SkillGapCard'
 import LearnModal from '../components/learning/LearnModal'
+import { useAISettings } from '../context/AISettingsContext'
 
 export default function Learning() {
+  const { aiConfigured } = useAISettings()
   const [gaps, setGaps] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -106,6 +108,7 @@ export default function Learning() {
         <LearnModal
           skill={selected.skill}
           jobs={selected.jobs}
+          aiConfigured={aiConfigured}
           onClose={() => setSelected(null)}
         />
       )}

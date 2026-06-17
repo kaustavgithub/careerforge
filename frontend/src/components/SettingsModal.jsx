@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import api from '../api/client'
+import { useAISettings } from '../context/AISettingsContext'
 
 const PROVIDERS = [
   {
@@ -21,13 +22,14 @@ const PROVIDERS = [
     label: 'Google Gemini',
     keyField: 'gemini_api_key',
     placeholder: 'AIza…',
-    models: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-flash'],
+    models: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'],
   },
 ]
 
 const CUSTOM_MODEL = '__custom__'
 
 export default function SettingsModal({ onClose }) {
+  const { refresh: refreshAiSettings } = useAISettings()
   const [provider, setProvider] = useState('anthropic')
   const [keys, setKeys] = useState({ anthropic_api_key: '', openai_api_key: '', gemini_api_key: '' })
   const [model, setModel] = useState('')
@@ -37,6 +39,8 @@ export default function SettingsModal({ onClose }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
+  const [clearConfirm, setClearConfirm] = useState(false)
+  const [clearing, setClearing] = useState(false)
   const overlayRef = useRef(null)
 
   const activeProvider = PROVIDERS.find(p => p.value === provider) || PROVIDERS[0]
@@ -85,10 +89,36 @@ export default function SettingsModal({ onClose }) {
         use_local_ai: useLocalAi,
       })
       setMsg({ ok: true, text: 'Settings saved.' })
+      refreshAiSettings()
       setTimeout(onClose, 800)
     } catch {
       setMsg({ ok: false, text: 'Failed to save settings.' })
       setSaving(false)
+    }
+  }
+
+  async function clearAiConfig() {
+    setClearing(true)
+    setMsg(null)
+    try {
+      await api.put('/settings', {
+        anthropic_api_key: null,
+        openai_api_key: null,
+        gemini_api_key: null,
+        ai_provider: provider,
+        ai_model: null,
+        use_local_ai: useLocalAi,
+      })
+      setKeys({ anthropic_api_key: '', openai_api_key: '', gemini_api_key: '' })
+      setModel('')
+      setCustomModel('')
+      setMsg({ ok: true, text: 'AI configuration cleared.' })
+      refreshAiSettings()
+    } catch {
+      setMsg({ ok: false, text: 'Failed to clear AI configuration.' })
+    } finally {
+      setClearing(false)
+      setClearConfirm(false)
     }
   }
 
@@ -215,8 +245,56 @@ export default function SettingsModal({ onClose }) {
                   value={customModel}
                   onChange={e => setCustomModel(e.target.value)}
                   placeholder="exact model id, e.g. gpt-5"
-                  style={inputStyle}
+                  style={{ ...inputStyle, marginBottom: '0.75rem' }}
                 />
+              )}
+
+              {!clearConfirm ? (
+                <button
+                  type="button"
+                  onClick={() => setClearConfirm(true)}
+                  style={{
+                    background: 'none', border: 'none', padding: 0,
+                    color: '#f87171', fontSize: '0.78rem', cursor: 'pointer',
+                    textDecoration: 'underline', textUnderlineOffset: '2px',
+                  }}
+                >
+                  🗑 Clear AI configuration
+                </button>
+              ) : (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap',
+                  background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
+                  borderRadius: '0.6rem', padding: '0.6rem 0.75rem',
+                }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', flex: '1 1 160px' }}>
+                    Remove all saved API keys and model settings?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearAiConfig}
+                    disabled={clearing}
+                    style={{
+                      background: 'rgba(239,68,68,0.85)', border: 'none', color: '#fff',
+                      borderRadius: '0.5rem', padding: '0.4rem 0.9rem', fontSize: '0.78rem',
+                      fontWeight: 600, cursor: clearing ? 'default' : 'pointer',
+                    }}
+                  >
+                    {clearing ? 'Clearing…' : 'Confirm'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClearConfirm(false)}
+                    disabled={clearing}
+                    style={{
+                      background: 'var(--btn-glass-bg)', border: '1px solid var(--btn-glass-border)',
+                      color: 'var(--text-secondary)', borderRadius: '0.5rem', padding: '0.4rem 0.9rem',
+                      fontSize: '0.78rem', cursor: 'pointer',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
               )}
             </div>
 

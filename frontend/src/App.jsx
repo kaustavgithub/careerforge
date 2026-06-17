@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ThemeProvider } from './context/ThemeContext.jsx'
+import { AISettingsProvider } from './context/AISettingsContext.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Jobs from './pages/Jobs.jsx'
@@ -13,6 +14,7 @@ import Register from './pages/Register.jsx'
 export default function App() {
   return (
     <ThemeProvider>
+    <AISettingsProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -54,6 +56,7 @@ export default function App() {
         />
       </Routes>
     </BrowserRouter>
+    </AISettingsProvider>
     </ThemeProvider>
   )
 }
