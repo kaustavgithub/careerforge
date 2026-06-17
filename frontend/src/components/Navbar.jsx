@@ -56,13 +56,8 @@ export default function Navbar() {
         borderBottom: '1px solid var(--nav-border)',
       }}>
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <Link to="/dashboard" className="flex items-center gap-2 group">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-900/40">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          <span className="text-base font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>CareerForge</span>
+        <Link to="/dashboard" className="flex items-center group">
+          <img src="/logo_trans.png" alt="CareerForge" className="h-8 w-auto" />
         </Link>
 
         <div className="flex items-center gap-1">

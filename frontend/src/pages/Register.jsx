@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '../api/client'
@@ -12,7 +13,15 @@ const glassInput = {
 export default function Register() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const [localLoginEnabled, setLocalLoginEnabled] = useState(true)
+  const [authChecked, setAuthChecked] = useState(false)
   const { register, handleSubmit, watch, formState: { errors, isSubmitting }, setError } = useForm()
+
+  useEffect(() => {
+    api.get('/auth/oidc/available').then(r => {
+      setLocalLoginEnabled(r.data.local_login_enabled !== false)
+    }).catch(() => {}).finally(() => setAuthChecked(true))
+  }, [])
 
   async function onSubmit(data) {
     try {
@@ -46,15 +55,20 @@ export default function Register() {
         }}>
 
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-900/50">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
+          <img src="/favicon.svg" alt="CareerForge" className="w-16 h-16 rounded-2xl mx-auto mb-4 shadow-lg shadow-indigo-900/50" />
           <h1 className="text-2xl font-bold text-white">CareerForge</h1>
           <p className="text-zinc-500 text-sm mt-1">Create your free account</p>
         </div>
 
+        {authChecked && !localLoginEnabled && (
+          <div className="rounded-xl px-4 py-3 text-sm text-red-300 mb-4"
+            style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+            Local registration is disabled. Please sign in with SSO from the{' '}
+            <Link to="/login" className="font-semibold underline">login page</Link>.
+          </div>
+        )}
+
+        {localLoginEnabled && (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Full Name</label>
@@ -119,6 +133,7 @@ export default function Register() {
             {isSubmitting ? 'Creating account…' : 'Create Account'}
           </button>
         </form>
+        )}
 
         <p className="text-center text-sm text-zinc-600 mt-6">
           Already have an account?{' '}

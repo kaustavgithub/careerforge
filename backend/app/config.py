@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     authentik_client_secret: Optional[str] = None
     authentik_redirect_uri: str = "http://localhost:8000/auth/oidc/callback"
 
+    # Set true to hide/disable email+password login and registration, forcing SSO-only access
+    disable_local_login: bool = False
+
     class Config:
         env_file = ".env"
 

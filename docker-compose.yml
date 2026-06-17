@@ -33,6 +33,8 @@ services:
       AUTHENTIK_CLIENT_ID: ${AUTHENTIK_CLIENT_ID:-}
       AUTHENTIK_CLIENT_SECRET: ${AUTHENTIK_CLIENT_SECRET:-}
       AUTHENTIK_REDIRECT_URI: ${AUTHENTIK_REDIRECT_URI:-}
+      # Set true to hide/disable email+password login & registration (SSO-only)
+      DISABLE_LOCAL_LOGIN: ${DISABLE_LOCAL_LOGIN:-false}
     depends_on:
       db:
         condition: service_healthy

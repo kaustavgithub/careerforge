@@ -17,10 +17,15 @@ export default function Login() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [ssoEnabled, setSsoEnabled] = useState(false)
+  const [localLoginEnabled, setLocalLoginEnabled] = useState(true)
+  const [authChecked, setAuthChecked] = useState(false)
   const { register, handleSubmit, formState: { errors, isSubmitting }, setError } = useForm()
 
   useEffect(() => {
-    api.get('/auth/oidc/available').then(r => setSsoEnabled(r.data.enabled)).catch(() => {})
+    api.get('/auth/oidc/available').then(r => {
+      setSsoEnabled(r.data.enabled)
+      setLocalLoginEnabled(r.data.local_login_enabled !== false)
+    }).catch(() => {}).finally(() => setAuthChecked(true))
     if (searchParams.get('error') === 'sso_failed') {
       // surface the error after a failed SSO attempt (handled by form error below)
     }
@@ -59,12 +64,9 @@ export default function Login() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-900/50">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
+          <div className="flex items-center justify-center mb-4 w-full">
+            <img src="/logo_trans.png" alt="CareerForge" className="w-full h-auto" />
           </div>
-          <h1 className="text-2xl font-bold text-white">CareerForge</h1>
           <p className="text-zinc-500 text-sm mt-1">Sign in to your account</p>
         </div>
 
@@ -73,36 +75,44 @@ export default function Login() {
           <>
             <button
               onClick={handleSso}
-              className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2.5 transition mb-5"
+              className="w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2.5 transition mb-5"
               style={{
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                color: '#e2e8f0',
+                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                boxShadow: '0 4px 20px rgba(99,102,241,0.35)',
               }}
             >
-              {/* Authentik logo mark */}
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="#fd4b2d" strokeWidth="2"/>
-                <path d="M8 12h8M12 8v8" stroke="#fd4b2d" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M12 2a5 5 0 00-5 5v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7a5 5 0 00-5-5zm-3 8V7a3 3 0 116 0v3H9z"
+                  fill="currentColor" />
               </svg>
-              Continue with Authentik
+              Sign in with Single Sign-On
             </button>
 
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
-              <span className="text-xs text-zinc-600">or</span>
-              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
-            </div>
+            {localLoginEnabled && (
+              <div className="flex items-center gap-3 mb-5">
+                <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+                <span className="text-xs text-zinc-600">or</span>
+                <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+              </div>
+            )}
           </>
         )}
 
         {searchParams.get('error') === 'sso_failed' && (
           <div className="rounded-xl px-4 py-3 text-sm text-red-300 mb-4"
             style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
-            SSO sign-in failed. Please try again or use email and password.
+            SSO sign-in failed. Please try again{localLoginEnabled ? ' or use email and password.' : '.'}
           </div>
         )}
 
+        {authChecked && !ssoEnabled && !localLoginEnabled && (
+          <div className="rounded-xl px-4 py-3 text-sm text-red-300 mb-4"
+            style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+            No sign-in method is currently available. Please contact your administrator.
+          </div>
+        )}
+
+        {localLoginEnabled && (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Email</label>
@@ -143,13 +153,16 @@ export default function Login() {
             {isSubmitting ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
+        )}
 
-        <p className="text-center text-sm text-zinc-600 mt-6">
-          No account?{' '}
-          <Link to="/register" className="text-indigo-400 font-semibold hover:text-indigo-300 transition">
-            Create one
-          </Link>
-        </p>
+        {localLoginEnabled && (
+          <p className="text-center text-sm text-zinc-600 mt-6">
+            No account?{' '}
+            <Link to="/register" className="text-indigo-400 font-semibold hover:text-indigo-300 transition">
+              Create one
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   )

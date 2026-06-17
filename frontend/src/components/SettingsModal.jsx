@@ -164,6 +164,8 @@ export default function SettingsModal({ onClose }) {
     >
       <div style={{
         width: '100%', maxWidth: '480px',
+        maxHeight: '90vh',
+        overflowY: 'auto',
         background: 'var(--modal-bg)',
         border: '1px solid var(--modal-border)',
         borderRadius: '1.25rem',

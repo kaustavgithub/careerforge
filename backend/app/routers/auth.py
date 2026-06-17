@@ -17,6 +17,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest, db: Session = Depends(get_db)):
+    if settings.disable_local_login:
+        raise HTTPException(status_code=403, detail="Local registration is disabled. Please sign in with SSO.")
     if db.query(User).filter(User.email == body.email).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
     user = User(
@@ -33,6 +35,8 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)):
+    if settings.disable_local_login:
+        raise HTTPException(status_code=403, detail="Local login is disabled. Please sign in with SSO.")
     user = db.query(User).filter(User.email == body.email).first()
     # hashed_password is None for SSO-only users — treat as invalid credentials
     if not user or not user.hashed_password or not verify_password(body.password, user.hashed_password):
@@ -49,8 +53,8 @@ def _sso_enabled() -> bool:
 
 @router.get("/oidc/available")
 def oidc_available():
-    """Lets the frontend know whether SSO is configured."""
-    return {"enabled": _sso_enabled()}
+    """Lets the frontend know whether SSO is configured and whether local login is allowed."""
+    return {"enabled": _sso_enabled(), "local_login_enabled": not settings.disable_local_login}
 
 
 @router.get("/oidc/login")

@@ -41,11 +41,7 @@ export default function PublicProfile() {
           borderBottom: '1px solid rgba(255,255,255,0.07)',
         }}>
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
+          <img src="/favicon.svg" alt="CareerForge" className="w-7 h-7 rounded-lg" />
           <span className="text-sm font-bold text-white">CareerForge</span>
         </Link>
         <Link to="/login"
