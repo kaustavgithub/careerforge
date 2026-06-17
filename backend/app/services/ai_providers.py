@@ -1,22 +1,23 @@
 import json
 from typing import Any, Optional, Union
 
+# Hard cap on how long we'll wait on an AI provider before failing fast.
+# Without this, a slow/hung upstream call can outlive proxy timeouts
+# (Cloudflare/Nginx Proxy Manager), which turns into a bare connection
+# reset for the client instead of a clean error.
+AI_REQUEST_TIMEOUT = 45.0
+
 PROVIDER_LABELS = {
     "anthropic": "Anthropic",
     "openai": "OpenAI",
     "gemini": "Google Gemini",
-}
-
-PROVIDER_KEY_FIELD = {
-    "anthropic": "anthropic_api_key",
-    "openai": "openai_api_key",
-    "gemini": "gemini_api_key",
+    "groq": "Groq",
 }
 
 # "smart" is used for higher-quality generation (cover letters, tailored CVs,
 # learning plans, CV parsing); "fast" is used for cheaper/quicker calls
-# (skill-gap extraction). Users can override with a custom model name via
-# ai_model, in which case it's used for both tiers.
+# (skill-gap extraction). The active ai_config's own model overrides this,
+# for both tiers, if one is set.
 PROVIDER_MODELS = {
     "anthropic": {
         "smart": "claude-sonnet-4-6",
@@ -33,27 +34,33 @@ PROVIDER_MODELS = {
         "fast": "gemini-2.5-flash",
         "options": ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"],
     },
+    "groq": {
+        "smart": "llama-3.3-70b-versatile",
+        "fast": "llama-3.1-8b-instant",
+        "options": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"],
+    },
 }
 
 
 def get_provider(user) -> str:
-    return user.ai_provider or "anthropic"
+    config = user.active_ai_config
+    return config.provider if config else "anthropic"
 
 
 def get_api_key(user) -> Optional[str]:
-    field = PROVIDER_KEY_FIELD[get_provider(user)]
-    return getattr(user, field, None)
+    config = user.active_ai_config
+    return config.api_key if config else None
 
 
 def get_model(user, tier: str = "smart") -> str:
-    if user.ai_model:
-        return user.ai_model
+    config = user.active_ai_config
+    if config and config.model:
+        return config.model
     return PROVIDER_MODELS[get_provider(user)][tier]
 
 
 def missing_key_message(user, action: str) -> str:
-    label = PROVIDER_LABELS[get_provider(user)]
-    return f"Add your {label} API key in Settings to {action}."
+    return f"Add an AI provider key in Settings and mark it active to {action}."
 
 
 def _extract_json(raw: str) -> Union[dict, list]:
@@ -77,7 +84,7 @@ def _extract_json(raw: str) -> Union[dict, list]:
 def _complete_anthropic(prompt: str, api_key: Optional[str], model: str, max_tokens: int) -> str:
     import anthropic
 
-    client = anthropic.Anthropic(api_key=api_key)
+    client = anthropic.Anthropic(api_key=api_key, timeout=AI_REQUEST_TIMEOUT)
     message = client.messages.create(
         model=model,
         max_tokens=max_tokens,
@@ -89,7 +96,7 @@ def _complete_anthropic(prompt: str, api_key: Optional[str], model: str, max_tok
 def _complete_openai(prompt: str, api_key: Optional[str], model: str, max_tokens: int) -> str:
     from openai import OpenAI
 
-    client = OpenAI(api_key=api_key)
+    client = OpenAI(api_key=api_key, timeout=AI_REQUEST_TIMEOUT)
     response = client.chat.completions.create(
         model=model,
         max_tokens=max_tokens,
@@ -106,22 +113,52 @@ def _complete_gemini(prompt: str, api_key: Optional[str], model: str, max_tokens
     response = gemini_model.generate_content(
         prompt,
         generation_config={"max_output_tokens": max_tokens},
+        request_options={"timeout": AI_REQUEST_TIMEOUT},
     )
     return response.text
+
+
+def _complete_groq(prompt: str, api_key: Optional[str], model: str, max_tokens: int) -> str:
+    from groq import Groq
+
+    client = Groq(api_key=api_key, timeout=AI_REQUEST_TIMEOUT)
+    response = client.chat.completions.create(
+        model=model,
+        max_tokens=max_tokens,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""
 
 
 _DISPATCH = {
     "anthropic": _complete_anthropic,
     "openai": _complete_openai,
     "gemini": _complete_gemini,
+    "groq": _complete_groq,
 }
+
+
+def _is_rate_limit_error(e: Exception) -> bool:
+    status = getattr(e, "status_code", None) or getattr(e, "code", None)
+    if status == 429:
+        return True
+    text = str(e).lower()
+    return "429" in text or "rate limit" in text or "quota" in text
 
 
 def complete_text(prompt: str, user, tier: str = "smart", max_tokens: int = 2048) -> str:
     provider = get_provider(user)
     api_key = get_api_key(user)
     model = get_model(user, tier)
-    return _DISPATCH[provider](prompt, api_key, model, max_tokens)
+    try:
+        return _DISPATCH[provider](prompt, api_key, model, max_tokens)
+    except Exception as e:
+        if _is_rate_limit_error(e):
+            raise RuntimeError(
+                f"{PROVIDER_LABELS[provider]} rate limit or quota exceeded. "
+                "Wait a bit and try again, or switch provider/model in Settings."
+            ) from e
+        raise
 
 
 def complete_json(prompt: str, user, tier: str = "smart", max_tokens: int = 2048) -> Any:

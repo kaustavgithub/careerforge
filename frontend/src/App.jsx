@@ -10,6 +10,7 @@ import OidcCallback from './pages/OidcCallback.jsx'
 import Profile from './pages/Profile.jsx'
 import PublicProfile from './pages/PublicProfile.jsx'
 import Register from './pages/Register.jsx'
+import Settings from './pages/Settings.jsx'
 
 export default function App() {
   return (
@@ -51,6 +52,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Learning />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           }
         />

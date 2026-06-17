@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import auth, cv, jobs, learning, profile, settings
+from app.routers import ai_configs, auth, cv, jobs, learning, profile, settings
 
 app = FastAPI(title="Career Profile Portal", version="1.0.0")
 
@@ -20,6 +20,7 @@ app.include_router(cv.router)
 app.include_router(jobs.router)
 app.include_router(learning.router)
 app.include_router(settings.router)
+app.include_router(ai_configs.router)
 
 
 @app.get("/health")

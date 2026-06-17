@@ -7,6 +7,7 @@ import { nanoid } from '../components/profile/utils'
 import CertSection from '../components/profile/CertSection'
 import EducationSection from '../components/profile/EducationSection'
 import PersonalSection from '../components/profile/PersonalSection'
+import ProjectsSection from '../components/profile/ProjectsSection'
 import SkillsSection from '../components/profile/SkillsSection'
 import WorkSection from '../components/profile/WorkSection'
 
@@ -22,9 +23,10 @@ const emptyProfile = {
   educations: [],
   skills: [],
   certifications: [],
+  projects: [],
 }
 
-const CLAUDE_PROMPT = `Parse the following CV and return ONLY a valid JSON object (no explanations, no markdown, just raw JSON) with this exact structure:
+const CV_PARSE_PROMPT = `Parse the following CV and return ONLY a valid JSON object (no explanations, no markdown, just raw JSON) with this exact structure:
 
 {
   "headline": "Professional headline or job title",
@@ -67,12 +69,24 @@ const CLAUDE_PROMPT = `Parse the following CV and return ONLY a valid JSON objec
       "expiry_date": "YYYY-MM-DD",
       "url": "https://..."
     }
+  ],
+  "projects": [
+    {
+      "name": "Project name",
+      "description": "What it does, your role, notable outcomes",
+      "technologies": "React, FastAPI, PostgreSQL",
+      "url": "https://...",
+      "repo_url": "https://github.com/...",
+      "start_date": "YYYY-MM-DD",
+      "end_date": "YYYY-MM-DD"
+    }
   ]
 }
 
 Rules:
 - Use null for any missing or unknown values
 - Skill category must be one of: Technical, Language, Soft, Other
+- Include every entry from a "Personal Projects" / "Projects" / "Side Projects" section under "projects" — these are separate from work_experiences
 - Dates must be YYYY-MM-DD format or null
 
 Here is my CV text:
@@ -94,6 +108,9 @@ function mapParsedToProfile(data) {
   }
   if (Array.isArray(data.certifications)) {
     result.certifications = data.certifications.map((e) => ({ ...e, _id: nanoid() }))
+  }
+  if (Array.isArray(data.projects)) {
+    result.projects = data.projects.map((e) => ({ ...e, _id: nanoid() }))
   }
   return result
 }
@@ -189,7 +206,7 @@ export default function Profile() {
     try {
       const res = await api.post('/cv/parse', formData)
       setDraft(mapParsedToProfile(res.data))
-      setImportMsg({ ok: true, text: 'CV parsed with Claude API. Review the form below and save.' })
+      setImportMsg({ ok: true, text: 'CV parsed with AI. Review the form below and save.' })
       setSelectedFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
     } catch {
@@ -203,7 +220,7 @@ export default function Profile() {
     setImportMsg(null)
     const trimmed = pastedText.trim()
     if (!trimmed) {
-      setImportMsg({ ok: false, text: 'Nothing pasted yet — paste the JSON output from Claude first.' })
+      setImportMsg({ ok: false, text: 'Nothing pasted yet — paste the JSON output from your AI chat first.' })
       return
     }
     // Strip markdown code fences if present
@@ -215,12 +232,12 @@ export default function Profile() {
       setImportMsg({ ok: true, text: 'Profile imported! Review the form below and save.' })
       setPastedText('')
     } catch {
-      setImportMsg({ ok: false, text: 'Could not parse JSON. Make sure you paste the raw JSON Claude returned.' })
+      setImportMsg({ ok: false, text: 'Could not parse JSON. Make sure you paste the raw JSON your AI chat returned.' })
     }
   }
 
   function handleCopyPrompt() {
-    navigator.clipboard.writeText(CLAUDE_PROMPT).then(() => {
+    navigator.clipboard.writeText(CV_PARSE_PROMPT).then(() => {
       setPromptCopied(true)
       setTimeout(() => setPromptCopied(false), 2500)
     })
@@ -366,7 +383,7 @@ export default function Profile() {
               <div className="flex" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                 {[
                   { key: 'upload', label: 'Upload CV',         icon: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12' },
-                  { key: 'paste',  label: 'Paste from Claude', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
+                  { key: 'paste',  label: 'Paste from AI',     icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
                   { key: 'manual', label: 'Edit directly',     icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
                 ].map(({ key, label, icon }) => (
                   <button key={key} onClick={() => switchMode(key)}
@@ -394,7 +411,7 @@ export default function Profile() {
 
                 {editMode === 'upload' && (
                   <div className="space-y-4">
-                    <p className="text-sm text-zinc-500">Upload your PDF or DOCX — Claude API will extract your info automatically.</p>
+                    <p className="text-sm text-zinc-500">Upload your PDF or DOCX — your AI provider will extract your info automatically.</p>
                     <label htmlFor="cv-upload"
                       className="flex flex-col items-center justify-center gap-3 rounded-xl px-6 py-10 cursor-pointer transition"
                       style={selectedFile
@@ -438,9 +455,9 @@ export default function Profile() {
                       style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
                       <p className="font-semibold text-zinc-300">How to use:</p>
                       <ol className="list-decimal list-inside space-y-1">
-                        <li>Copy the prompt below and open Claude.ai or Claude desktop</li>
+                        <li>Copy the prompt below and open your AI chat tool (ChatGPT, Claude, Gemini, etc.)</li>
                         <li>Replace <code className="px-1 rounded text-xs text-zinc-400" style={{ background: 'rgba(255,255,255,0.08)' }}>[PASTE YOUR CV TEXT HERE]</code> with your CV</li>
-                        <li>Send it to Claude, copy the JSON output</li>
+                        <li>Send it, then copy the JSON output</li>
                         <li>Paste it below and click Parse</li>
                       </ol>
                       <button onClick={handleCopyPrompt}
@@ -449,7 +466,7 @@ export default function Profile() {
                         {promptCopied ? '✓ Prompt copied!' : <>
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                          </svg>Copy Claude prompt</>}
+                          </svg>Copy prompt</>}
                       </button>
                     </div>
                     <div>
@@ -477,6 +494,7 @@ export default function Profile() {
             <WorkSection experiences={draft.work_experiences} onChange={(work_experiences) => setDraft((p) => ({ ...p, work_experiences }))} />
             <EducationSection educations={draft.educations} onChange={(educations) => setDraft((p) => ({ ...p, educations }))} />
             <SkillsSection skills={draft.skills} onChange={(skills) => setDraft((p) => ({ ...p, skills }))} />
+            <ProjectsSection projects={draft.projects} onChange={(projects) => setDraft((p) => ({ ...p, projects }))} />
             <CertSection certifications={draft.certifications} onChange={(certifications) => setDraft((p) => ({ ...p, certifications }))} />
 
             <div className="flex justify-between pb-8">

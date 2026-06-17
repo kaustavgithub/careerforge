@@ -6,27 +6,41 @@ import LearnModal from '../components/learning/LearnModal'
 import { useAISettings } from '../context/AISettingsContext'
 
 export default function Learning() {
-  const { aiConfigured } = useAISettings()
+  const { settings, aiConfigured, refresh } = useAISettings()
   const [gaps, setGaps] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selected, setSelected] = useState(null)
+  const [switching, setSwitching] = useState(false)
+  const useLocal = settings?.use_local_ai !== false
+
+  async function load() {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data } = await api.get('/learning/skill-gaps')
+      setGaps(data)
+    } catch (e) {
+      setError(e?.response?.data?.detail || 'Failed to analyse skill gaps.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    async function load() {
-      setLoading(true)
-      setError(null)
-      try {
-        const { data } = await api.get('/learning/skill-gaps')
-        setGaps(data)
-      } catch (e) {
-        setError(e?.response?.data?.detail || 'Failed to analyse skill gaps.')
-      } finally {
-        setLoading(false)
-      }
+    if (settings) load()
+  }, [settings])
+
+  async function setMode(local) {
+    if (local === useLocal || switching) return
+    setSwitching(true)
+    try {
+      await api.patch('/settings/use-local-ai', { use_local_ai: local })
+      await refresh()
+    } finally {
+      setSwitching(false)
     }
-    load()
-  }, [])
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-gradient)' }}>
@@ -43,9 +57,58 @@ export default function Learning() {
           }}>
             Skills to learn
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', margin: 0 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', margin: '0 0 1rem' }}>
             Skills identified across your saved job listings — sorted by importance (frequency × avg job score).
           </p>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <div style={{
+              display: 'inline-flex',
+              background: 'var(--bg-card-dim)',
+              border: '1px solid var(--border-dim)',
+              borderRadius: '0.6rem',
+              padding: '0.2rem',
+              gap: '0.2rem',
+            }}>
+              <button
+                onClick={() => setMode(true)}
+                disabled={switching}
+                style={{
+                  padding: '0.35rem 0.8rem',
+                  borderRadius: '0.45rem',
+                  border: 'none',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: switching ? 'default' : 'pointer',
+                  background: useLocal ? '#818cf8' : 'transparent',
+                  color: useLocal ? '#fff' : 'var(--text-muted)',
+                }}
+              >
+                Local
+              </button>
+              <button
+                onClick={() => setMode(false)}
+                disabled={switching || !aiConfigured}
+                title={!aiConfigured ? 'Add an API key in Settings to use AI mode' : ''}
+                style={{
+                  padding: '0.35rem 0.8rem',
+                  borderRadius: '0.45rem',
+                  border: 'none',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: switching || !aiConfigured ? 'default' : 'pointer',
+                  opacity: !aiConfigured ? 0.5 : 1,
+                  background: !useLocal ? '#818cf8' : 'transparent',
+                  color: !useLocal ? '#fff' : 'var(--text-muted)',
+                }}
+              >
+                AI
+              </button>
+            </div>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>
+              {useLocal ? 'Fast keyword scan, no API usage' : 'Smarter analysis, uses your AI provider'}
+            </span>
+          </div>
         </div>
 
         {loading && (

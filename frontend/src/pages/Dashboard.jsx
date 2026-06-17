@@ -155,7 +155,7 @@ export default function Dashboard() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
-                Analysing with Claude AI…
+                Analysing with AI…
               </>
             ) : '✨ Parse CV with AI'}
           </button>
@@ -174,7 +174,7 @@ export default function Dashboard() {
 
         {loading && (
           <p className="text-center text-xs mt-4" style={{ color: 'var(--text-faint)' }}>
-            Claude is reading your CV and extracting your experience, education, and skills…
+            AI is reading your CV and extracting your experience, education, and skills…
           </p>
         )}
 

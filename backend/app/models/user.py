@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -16,12 +16,12 @@ class User(Base):
     hashed_password = Column(String, nullable=True)
     full_name = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    anthropic_api_key = Column(String, nullable=True)
-    openai_api_key = Column(String, nullable=True)
-    gemini_api_key = Column(String, nullable=True)
-    ai_provider = Column(String, nullable=False, default="anthropic", server_default="anthropic")
-    ai_model = Column(String, nullable=True)
     use_local_ai = Column(Boolean, nullable=False, default=True, server_default="true")
+    active_ai_config_id = Column(UUID(as_uuid=True), ForeignKey("ai_configs.id", ondelete="SET NULL"), nullable=True)
 
     profile = relationship("Profile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     job_listings = relationship("JobListing", back_populates="user", cascade="all, delete-orphan")
+    ai_configs = relationship(
+        "AiConfig", foreign_keys="AiConfig.user_id", back_populates="user", cascade="all, delete-orphan"
+    )
+    active_ai_config = relationship("AiConfig", foreign_keys=[active_ai_config_id])

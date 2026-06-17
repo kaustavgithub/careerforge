@@ -159,10 +159,7 @@ Return ONLY valid JSON — a list of objects, sorted by importance (most-needed 
 ]
 Only include skills the candidate does NOT already have. List at most 15 skills."""
 
-    try:
-        return ai_providers.complete_json(prompt, user, tier="fast", max_tokens=2000)
-    except ValueError:
-        return []
+    return ai_providers.complete_json(prompt, user, tier="fast", max_tokens=2000)
 
 
 def extract_skill_gaps(jobs: List[Any], profile, use_local: bool = True, user=None) -> List[Dict[str, Any]]:

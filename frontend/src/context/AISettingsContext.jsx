@@ -33,7 +33,7 @@ export function AISettingsProvider({ children }) {
 
   useEffect(() => { refresh() }, [user])
 
-  const aiConfigured = !!(settings && settings[`${settings.ai_provider}_api_key`])
+  const aiConfigured = !!(settings && settings.active_ai_config_id)
 
   return (
     <AISettingsContext.Provider value={{ settings, aiConfigured, loading, refresh }}>

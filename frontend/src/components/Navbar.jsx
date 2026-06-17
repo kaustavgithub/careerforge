@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
-import SettingsModal from './SettingsModal'
 
 function SunIcon() {
   return (
@@ -28,7 +27,6 @@ export default function Navbar() {
   const { theme, toggle } = useTheme()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
   const menuRef = useRef(null)
 
   function handleLogout() {
@@ -146,8 +144,9 @@ export default function Navbar() {
                   boxShadow: '0 12px 40px rgba(0,0,0,0.3)',
                   zIndex: 100,
                 }}>
-                  <button
-                    onClick={() => { setMenuOpen(false); setShowSettings(true) }}
+                  <Link
+                    to="/settings"
+                    onClick={() => setMenuOpen(false)}
                     style={{
                       width: '100%', textAlign: 'left',
                       padding: '0.55rem 0.85rem', borderRadius: '0.5rem',
@@ -164,7 +163,7 @@ export default function Navbar() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     Settings
-                  </button>
+                  </Link>
 
                   <div style={{ height: '1px', background: 'var(--border-faint)', margin: '0.2rem 0.5rem' }} />
 
@@ -193,8 +192,6 @@ export default function Navbar() {
         </div>
       </div>
     </nav>
-
-    {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
   </>
   )
 }
