@@ -13,15 +13,6 @@ export default function Dashboard() {
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [tokenCopied, setTokenCopied] = useState(false)
-
-  function copyToken() {
-    const token = localStorage.getItem('token') || ''
-    navigator.clipboard.writeText(token)
-    setTokenCopied(true)
-    setTimeout(() => setTokenCopied(false), 2000)
-  }
-
   function handleDrop(e) {
     e.preventDefault()
     setDragging(false)
@@ -174,70 +165,6 @@ export default function Dashboard() {
             AI is reading your CV and extracting your experience, education, and skills…
           </p>
         )}
-
-        {/* Extension setup */}
-        <div className="mt-10 rounded-2xl p-6" style={{
-          background: 'var(--bg-card-dim)',
-          border: '1px solid var(--border-dim)',
-        }}>
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center"
-              style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.25)' }}>
-              <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-bold mb-0.5" style={{ color: 'var(--text-primary)' }}>LinkedIn Browser Extension</h3>
-              <p className="text-xs mb-4 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                Browse LinkedIn jobs normally. Click <span className="text-indigo-400 font-semibold">⚡ Save to CareerForge</span> on any job page — cover letter and CV tweaks generated instantly.
-              </p>
-
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs w-4 text-center font-bold" style={{ color: 'var(--text-faint)' }}>1</span>
-                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    Download the extension below, then unzip it
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs w-4 text-center font-bold" style={{ color: 'var(--text-faint)' }}>2</span>
-                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    In Chrome go to <code style={{ color: 'var(--text-secondary)' }}>chrome://extensions</code> → enable <span className="font-semibold">Developer mode</span> → <span className="font-semibold">Load unpacked</span> → select the unzipped <code className="text-indigo-400 bg-indigo-950/50 px-1 py-0.5 rounded">browser-extension</code> folder
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs w-4 text-center font-bold" style={{ color: 'var(--text-faint)' }}>3</span>
-                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Click the extension icon, enter your CareerForge URL, then paste the token below</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs w-4 text-center font-bold" style={{ color: 'var(--text-faint)' }}>4</span>
-                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Open any LinkedIn job — the save button will appear automatically</p>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <a href="/careerforge-extension.zip" download className="px-4 py-2 rounded-lg text-xs font-bold transition inline-block"
-                  style={{
-                    background: 'rgba(99,102,241,0.15)',
-                    border: '1px solid rgba(99,102,241,0.3)',
-                    color: '#818cf8',
-                  }}>
-                  Download Extension
-                </a>
-                <button onClick={copyToken} className="px-4 py-2 rounded-lg text-xs font-bold transition"
-                  style={{
-                    background: tokenCopied ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.15)',
-                    border: `1px solid ${tokenCopied ? 'rgba(34,197,94,0.3)' : 'rgba(99,102,241,0.3)'}`,
-                    color: tokenCopied ? '#4ade80' : '#818cf8',
-                  }}>
-                  {tokenCopied ? '✓ Token copied!' : 'Copy API Token'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       </main>
     </div>
   )

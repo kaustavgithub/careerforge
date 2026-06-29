@@ -383,7 +383,7 @@ export default function Jobs() {
       <div style={{ position: 'relative', zIndex: 1 }}>
         {/* Tab bar */}
         <div style={{ borderBottom: '1px solid var(--border)' }}>
-          <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 1.5rem', display: 'flex', gap: 0 }}>
+          <div className="jobs-tab-bar" style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 1.5rem' }}>
             {TABS.map(t => {
               const isActive = tab === t.key
               const cc = COUNT_COLOR[t.key]
@@ -404,7 +404,7 @@ export default function Jobs() {
                 >
                   {t.label}
                   {cc && t.count != null && (
-                    <span style={{
+                    <span className="tab-badge" style={{
                       background: cc.bg, color: cc.text,
                       borderRadius: '999px', padding: '1px 7px',
                       fontSize: '0.68rem', fontWeight: 700,

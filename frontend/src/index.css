@@ -136,3 +136,22 @@
 .sidenav-drawer-animate {
   animation: slideInLeft 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* ── Jobs tab bar — fit all tabs without horizontal scroll ── */
+.jobs-tab-bar {
+  display: flex;
+  gap: 0;
+}
+.jobs-tab-bar button {
+  flex: 1;
+  justify-content: center;
+}
+@media (max-width: 767px) {
+  .jobs-tab-bar button {
+    padding: 0.625rem 0.2rem !important;
+    font-size: 0.72rem !important;
+  }
+  .jobs-tab-bar .tab-badge {
+    display: none;
+  }
+}
