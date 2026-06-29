@@ -157,27 +157,15 @@ Return ONLY valid JSON — a list of objects, sorted by importance (most-needed 
     "jobs": [{{"id": "job_id", "title": "Job Title", "company": "Company", "score": 75}}]
   }}
 ]
-Only include skills the candidate does NOT already have. List at most 15 skills."""
+Only include skills the candidate does NOT already have. List at most 30 skills."""
 
-    return ai_providers.complete_json(prompt, user, tier="fast", max_tokens=2000)
+    return ai_providers.complete_json(prompt, user, tier="fast", max_tokens=3500)
 
 
-def extract_skill_gaps(jobs: List[Any], profile, use_local: bool = True, user=None) -> List[Dict[str, Any]]:
-    """
-    Identifies missing skills from job descriptions.
-    use_local=True → fast regex scan (default, free).
-    use_local=False → AI provider for smarter extraction (requires an API key).
-    gap_score = frequency × avg_job_score  (higher = more important to learn)
-    """
-    if not jobs:
-        return []
-
-    if not use_local and user is not None and ai_providers.get_api_key(user):
-        return _extract_skill_gaps_ai(jobs, profile, user)
-
+def _extract_skill_gaps_local(jobs: List[Any], profile) -> List[Dict[str, Any]]:
+    """Fast regex keyword scan — no API call required."""
     existing_lower = {s.name.lower() for s in (profile.skills or [])}
 
-    # Build score + meta lookup
     job_meta = {
         str(j.id): {
             "id": str(j.id),
@@ -188,18 +176,12 @@ def extract_skill_gaps(jobs: List[Any], profile, use_local: bool = True, user=No
         for j in jobs
     }
 
-    # skill_name → {job_id: job_meta}
     hits: Dict[str, Dict[str, Any]] = {}
-
     for j in jobs:
         desc = (j.title or "") + " " + (j.description or "")
         jid = str(j.id)
         for canonical, category, pattern in _SKILL_PATTERNS:
-            # Skip if user already has this skill
             if canonical.lower() in existing_lower:
-                continue
-            # Also skip if any alias word matches an existing skill
-            if any(alias.lower() in existing_lower for alias in [canonical]):
                 continue
             if pattern.search(desc):
                 if canonical not in hits:
@@ -223,6 +205,91 @@ def extract_skill_gaps(jobs: List[Any], profile, use_local: bool = True, user=No
 
     result.sort(key=lambda x: (x["gap_score"], x["frequency"]), reverse=True)
     return result
+
+
+def _merge_gaps(local: List[Dict[str, Any]], ai: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Merge local and AI gap lists into one unified list, deduplicating by skill name."""
+    merged: Dict[str, Dict[str, Any]] = {g["skill"].lower(): dict(g) for g in local}
+
+    for gap in ai:
+        key = gap["skill"].lower()
+        if key in merged:
+            existing = merged[key]
+            combined = {j["id"]: j for j in existing["jobs"] + gap["jobs"]}
+            jobs = sorted(combined.values(), key=lambda x: x["score"], reverse=True)
+            scores = [j["score"] for j in jobs]
+            existing["jobs"] = jobs
+            existing["frequency"] = len(jobs)
+            existing["avg_job_score"] = int(sum(scores) / len(scores))
+            existing["gap_score"] = existing["frequency"] * existing["avg_job_score"]
+        else:
+            merged[key] = dict(gap)
+
+    result = list(merged.values())
+    result.sort(key=lambda x: (x["gap_score"], x["frequency"]), reverse=True)
+    return result
+
+
+def extract_skill_gaps(jobs: List[Any], profile, use_local: bool = True, user=None) -> List[Dict[str, Any]]:
+    """
+    Identifies missing skills from job descriptions.
+    Always runs the local keyword scan first.
+    When use_local=False and an AI key is configured, also runs AI extraction
+    and merges both results into a single unified list so the same cards are
+    visible regardless of which mode produced them.
+    gap_score = frequency × avg_job_score  (higher = more important to learn)
+    """
+    if not jobs:
+        return []
+
+    local_result = _extract_skill_gaps_local(jobs, profile)
+
+    if not use_local and user is not None and ai_providers.get_api_key(user):
+        ai_result = _extract_skill_gaps_ai(jobs, profile, user)
+        return _merge_gaps(local_result, ai_result)
+
+    return local_result
+
+
+def update_skill_gaps_from_jobs(jobs, profile, user_id, db) -> None:
+    """Run local skill gap scan on given jobs and upsert results into UserSkillGap table."""
+    from datetime import datetime
+    from app.models.skill_gap import UserSkillGap
+
+    if not jobs:
+        return
+
+    gaps = _extract_skill_gaps_local(jobs, profile)
+
+    for gap in gaps:
+        existing = db.query(UserSkillGap).filter(
+            UserSkillGap.user_id == user_id,
+            UserSkillGap.skill == gap["skill"],
+        ).first()
+
+        if existing:
+            combined = {j["id"]: j for j in (existing.jobs or [])}
+            for j in gap["jobs"]:
+                combined[j["id"]] = j
+            merged_jobs = sorted(combined.values(), key=lambda x: x["score"], reverse=True)
+            scores = [j["score"] for j in merged_jobs]
+            existing.jobs = merged_jobs
+            existing.frequency = len(merged_jobs)
+            existing.avg_job_score = int(sum(scores) / len(scores))
+            existing.gap_score = existing.frequency * existing.avg_job_score
+            existing.updated_at = datetime.utcnow()
+        else:
+            db.add(UserSkillGap(
+                user_id=user_id,
+                skill=gap["skill"],
+                category=gap["category"],
+                frequency=gap["frequency"],
+                avg_job_score=gap["avg_job_score"],
+                gap_score=gap["gap_score"],
+                jobs=gap["jobs"],
+            ))
+
+    db.commit()
 
 
 def generate_learning_plan(skill: str, gap_jobs: List[Dict], profile, full_name: str, user) -> Dict[str, Any]:

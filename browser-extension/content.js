@@ -4,22 +4,45 @@
 
   // ── DOM helpers ────────────────────────────────────────────────────────────
 
-  function first(...selectors) {
+  function firstEl(...selectors) {
     for (const sel of selectors) {
       const el = document.querySelector(sel)
-      if (el?.innerText?.trim()) return el.innerText.trim()
+      if (el?.innerText?.trim()) return el
     }
-    return ''
+    return null
   }
 
-  function getJobTitle() {
-    return first(
+  function first(...selectors) {
+    return firstEl(...selectors)?.innerText.trim() || ''
+  }
+
+  function getCurrentJobId() {
+    const m = window.location.pathname.match(/\/jobs\/view\/(\d+)/)
+    if (m) return m[1]
+    return new URLSearchParams(window.location.search).get('currentJobId') || ''
+  }
+
+  function getJobTitleEl() {
+    // Current LinkedIn layout renders the title as a plain <a> to
+    // /jobs/view/<id>/ with opaque, per-deployment hashed classes — match on
+    // the href instead since the job id in the URL is stable.
+    const jobId = getCurrentJobId()
+    if (jobId) {
+      const link = document.querySelector(`a[href*="/jobs/view/${jobId}/"]`)
+      if (link?.innerText?.trim()) return link
+    }
+
+    return firstEl(
       '.job-details-jobs-unified-top-card__job-title h1',
       '.jobs-unified-top-card__job-title h1',
       '.topcard__title',
       'h1.t-24',
       'h1'
     )
+  }
+
+  function getJobTitle() {
+    return getJobTitleEl()?.innerText.trim() || ''
   }
 
   function getCompany() {
@@ -42,6 +65,15 @@
   }
 
   function getDescription() {
+    // LinkedIn's newer "SDUI" job pages use opaque hashed CSS classes that
+    // change per deployment, but this data attribute on the about-the-job
+    // block is stable and semantic.
+    const aboutJob = document.querySelector(
+      '[data-sdui-component="com.linkedin.sdui.generated.jobseeker.dsl.impl.aboutTheJob"]'
+    )
+    const sdui = aboutJob?.querySelector('[data-testid="expandable-text-box"]')
+    if (sdui?.innerText?.trim()) return sdui.innerText.trim()
+
     return first(
       '#job-details',
       '.jobs-description-content__text',
@@ -53,16 +85,30 @@
   // ── Button injection ───────────────────────────────────────────────────────
 
   function injectButton() {
-    if (document.getElementById(BTN_ID)) return
+    if (document.getElementById(BTN_ID)) return true
 
-    // Find the apply button area — try multiple anchor points
-    const anchor =
-      document.querySelector('.jobs-apply-button--top-card') ||
-      document.querySelector('.jobs-unified-top-card__content--two-pane .jobs-apply-button') ||
-      document.querySelector('[data-job-id]') ||
-      document.querySelector('.job-details-jobs-unified-top-card__container--two-pane')
+    // Current SDUI layout: the title is a plain <a>, not a container — place
+    // the button as a sibling right after it instead of nesting it inside
+    // the link (which would make the button trigger navigation on click).
+    // Checked first because it's anchored to the currently-open job id —
+    // unlike the legacy selectors below, it can't accidentally match a
+    // different job card on split-view /jobs/search/ pages.
+    const titleEl = getJobTitleEl()
 
-    if (!anchor) return
+    // Legacy LinkedIn layout: a dedicated container next to the Apply button.
+    // [data-job-id] is a last resort — on split-view search pages it also
+    // matches list cards, so only fall back to it when no title link exists.
+    const container =
+      !titleEl &&
+      (document.querySelector('.jobs-apply-button--top-card') ||
+        document.querySelector('.jobs-unified-top-card__content--two-pane .jobs-apply-button') ||
+        document.querySelector('[data-job-id]') ||
+        document.querySelector('.job-details-jobs-unified-top-card__container--two-pane'))
+
+    // Anchor availability, not title-text extraction, gates injection — the
+    // selectors above can find an anchor even when getJobTitle() can't yet
+    // read clean text (e.g. still streaming in), so don't require both.
+    if (!container && !titleEl) return false
 
     const btn = document.createElement('button')
     btn.id = BTN_ID
@@ -95,7 +141,13 @@
     })
 
     btn.addEventListener('click', handleSave)
-    anchor.appendChild(btn)
+
+    if (container) {
+      container.appendChild(btn)
+    } else {
+      titleEl.insertAdjacentElement('afterend', btn)
+    }
+    return true
   }
 
   // ── Save handler ───────────────────────────────────────────────────────────
@@ -174,11 +226,7 @@
       let tries = 0
       const poll = setInterval(() => {
         tries++
-        const title = getJobTitle()
-        if (title) {
-          injectButton()
-          clearInterval(poll)
-        }
+        if (injectButton()) clearInterval(poll)
         if (tries >= MAX) clearInterval(poll)
       }, 500)
     }

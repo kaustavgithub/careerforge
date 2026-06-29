@@ -20,8 +20,59 @@ class JobManualCreate(BaseModel):
     apply_url: Optional[str] = None
 
 
+class JDAnalyseRequest(BaseModel):
+    description: str
+    title: Optional[str] = None
+    company: Optional[str] = None
+    location: Optional[str] = None
+    use_ai: bool = False
+
+
+class TranslateTextRequest(BaseModel):
+    text: str
+
+
+class JobSaveRequest(BaseModel):
+    external_id: str
+    source: str = "jobtech"
+    title: str
+    company: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    apply_url: Optional[str] = None
+    apply_email: Optional[str] = None
+    published_at: Optional[datetime] = None
+    match_score: Optional[int] = None
+    match_summary: Optional[str] = None
+
+
+class JobSearchResultSchema(BaseModel):
+    external_id: str
+    source: str
+    title: str
+    company: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    apply_url: Optional[str] = None
+    apply_email: Optional[str] = None
+    published_at: Optional[datetime] = None
+    match_score: Optional[int] = None
+    match_summary: Optional[str] = None
+
+
+class JobJDSave(BaseModel):
+    title: str
+    company: Optional[str] = None
+    location: Optional[str] = None
+    description: str
+    apply_url: Optional[str] = None
+    status: str = "saved"
+    match_score: Optional[int] = None
+    match_summary: Optional[str] = None
+
+
 class JobStatusUpdate(BaseModel):
-    status: str  # new | saved | applied | rejected
+    status: str  # saved | applied | rejected
 
 
 class JobListingSchema(BaseModel):

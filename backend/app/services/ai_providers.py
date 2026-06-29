@@ -65,20 +65,35 @@ def missing_key_message(user, action: str) -> str:
 
 def _extract_json(raw: str) -> Union[dict, list]:
     """Pull the first valid JSON object or array out of a model response,
-    tolerating markdown fences or commentary around it."""
-    candidates = []
+    tolerating markdown fences or commentary around it.
+
+    Tries whichever structure (array or object) appears first in the string so
+    that a response like `[{"id":…}]` is returned as a list, not the inner dict.
+    """
     obj_start, obj_end = raw.find("{"), raw.rfind("}")
-    if obj_start != -1 and obj_end != -1:
-        candidates.append(raw[obj_start : obj_end + 1])
     arr_start, arr_end = raw.find("["), raw.rfind("]")
-    if arr_start != -1 and arr_end != -1:
-        candidates.append(raw[arr_start : arr_end + 1])
+
+    has_obj = obj_start != -1 and obj_end > obj_start
+    has_arr = arr_start != -1 and arr_end > arr_start
+
+    # Build candidate list: outermost structure first
+    candidates = []
+    if has_arr and has_obj:
+        if arr_start < obj_start:
+            candidates = [raw[arr_start:arr_end + 1], raw[obj_start:obj_end + 1]]
+        else:
+            candidates = [raw[obj_start:obj_end + 1], raw[arr_start:arr_end + 1]]
+    elif has_obj:
+        candidates = [raw[obj_start:obj_end + 1]]
+    elif has_arr:
+        candidates = [raw[arr_start:arr_end + 1]]
+
     for candidate in candidates:
         try:
             return json.loads(candidate)
         except json.JSONDecodeError:
             continue
-    raise ValueError(f"No valid JSON in AI response: {raw[:200]}")
+    raise ValueError(f"No valid JSON in AI response (first 500 chars): {raw[:500]!r}")
 
 
 def _complete_anthropic(prompt: str, api_key: Optional[str], model: str, max_tokens: int) -> str:
@@ -102,7 +117,11 @@ def _complete_openai(prompt: str, api_key: Optional[str], model: str, max_tokens
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
-    return response.choices[0].message.content or ""
+    content = response.choices[0].message.content
+    if not content:
+        finish = getattr(response.choices[0], "finish_reason", "unknown")
+        raise RuntimeError(f"OpenAI returned empty content (finish_reason={finish}).")
+    return content
 
 
 def _complete_gemini(prompt: str, api_key: Optional[str], model: str, max_tokens: int) -> str:
@@ -127,7 +146,11 @@ def _complete_groq(prompt: str, api_key: Optional[str], model: str, max_tokens: 
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
-    return response.choices[0].message.content or ""
+    content = response.choices[0].message.content
+    if not content:
+        finish = getattr(response.choices[0], "finish_reason", "unknown")
+        raise RuntimeError(f"Groq returned empty content (finish_reason={finish}). Model may not support this request format.")
+    return content
 
 
 _DISPATCH = {

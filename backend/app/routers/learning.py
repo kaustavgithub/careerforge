@@ -5,12 +5,11 @@ from typing import List, Optional
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models.job import JobListing
 from app.models.profile import Profile
+from app.models.skill_gap import UserSkillGap
 from app.services import ai_providers
 from app.services.learning_service import (
     build_copy_prompt,
-    extract_skill_gaps,
     generate_learning_plan,
 )
 
@@ -31,21 +30,23 @@ class LearnRequest(BaseModel):
 
 @router.get("/skill-gaps")
 def skill_gaps(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    profile = _get_profile(current_user, db)
-    jobs = (
-        db.query(JobListing)
-        .filter(JobListing.user_id == current_user.id, JobListing.description.isnot(None))
-        .order_by(JobListing.match_score.desc().nullslast(), JobListing.created_at.desc())
-        .limit(30)
+    gaps = (
+        db.query(UserSkillGap)
+        .filter(UserSkillGap.user_id == current_user.id)
+        .order_by(UserSkillGap.gap_score.desc())
         .all()
     )
-    if not jobs:
-        return []
-    use_local = current_user.use_local_ai if current_user.use_local_ai is not None else True
-    try:
-        return extract_skill_gaps(jobs, profile, use_local=use_local, user=current_user)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Skill gap analysis failed: {e}")
+    return [
+        {
+            "skill": g.skill,
+            "category": g.category,
+            "frequency": g.frequency,
+            "avg_job_score": g.avg_job_score,
+            "gap_score": g.gap_score,
+            "jobs": g.jobs or [],
+        }
+        for g in gaps
+    ]
 
 
 @router.post("/plan")

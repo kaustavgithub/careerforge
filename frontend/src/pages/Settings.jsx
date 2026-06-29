@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import api from '../api/client'
-import Navbar from '../components/Navbar'
 import { useAISettings } from '../context/AISettingsContext'
 
 const PROVIDERS = [
@@ -81,8 +80,6 @@ export default function Settings() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-gradient)' }}>
-      <Navbar />
-
       <div style={{ maxWidth: '720px', margin: '0 auto', padding: '2rem 1rem 4rem' }}>
         <div style={{ marginBottom: '2rem' }}>
           <h1 style={{

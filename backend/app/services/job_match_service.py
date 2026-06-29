@@ -102,20 +102,23 @@ def batch_score_jobs(jobs: List[Dict[str, Any]], profile, full_name: str) -> Lis
     return results
 
 
-def batch_score_jobs_with_ai(jobs: List[Dict[str, Any]], profile, full_name: str, user) -> List[Dict[str, Any]]:
-    """Score a list of jobs using the user's configured AI provider in a single call.
-    Returns [{id, score, summary}]. Raises if the AI call or parsing fails."""
-    profile_text = _build_profile_summary(profile, full_name)
+# Groq free tier has a tight per-request token budget (~8k input+output combined).
+# All other providers have large context windows and can score all jobs in one call.
+_GROQ_BATCH_SIZE = 5
+_GROQ_DESC_CHARS = 400
+_DEFAULT_DESC_CHARS = 1500
 
+
+def _score_batch_with_ai(batch: List[Dict[str, Any]], profile_text: str, desc_chars: int, user) -> Dict[str, dict]:
+    """Score one batch of jobs via AI. Returns {external_id: {score, summary}}."""
     listings = [
         {
             "id": job["external_id"],
             "title": job.get("title", ""),
             "company": job.get("company", ""),
-            "location": job.get("location", ""),
-            "description": (job.get("description") or "")[:1500],
+            "description": (job.get("description") or "")[:desc_chars],
         }
-        for job in jobs
+        for job in batch
     ]
 
     prompt = f"""You are an expert recruiter matching a candidate to job listings.
@@ -126,30 +129,41 @@ CANDIDATE PROFILE:
 JOB LISTINGS (JSON array):
 {json.dumps(listings, ensure_ascii=False)}
 
-For each job, give a match score from 0-100 based on how well the candidate's skills,
-experience and location fit the role, and a one-sentence summary explaining the score.
+For each job, give a match score 0-100 and a one-sentence summary explaining the score.
 
-Return ONLY a valid JSON array (no markdown fences), one entry per job, in the same order:
-[
-  {{ "id": "job id from input", "score": 0-100, "summary": "one sentence" }}
-]"""
+Return ONLY a JSON array, one entry per job, same order:
+[{{"id":"<job id>","score":<0-100>,"summary":"<one sentence>"}}]"""
 
-    raw_results = ai_providers.complete_json(prompt, user, tier="fast", max_tokens=400 + 60 * len(listings))
+    # 150 output tokens per job — enough for id + score + sentence, with headroom for reasoning models
+    raw_results = ai_providers.complete_json(prompt, user, tier="fast", max_tokens=300 + 150 * len(listings))
+    return {str(r["id"]): r for r in raw_results if "id" in r}
 
-    score_map = {str(r["id"]): r for r in raw_results if "id" in r}
+
+def batch_score_jobs_with_ai(jobs: List[Dict[str, Any]], profile, full_name: str, user) -> List[Dict[str, Any]]:
+    """Score jobs via AI. Groq uses small batches to fit its per-request token limit;
+    all other providers score all jobs in a single call. Raises on any failure."""
+    profile_text = _build_profile_summary(profile, full_name)
+
+    is_groq = ai_providers.get_provider(user) == "groq"
+    batch_size = _GROQ_BATCH_SIZE if is_groq else len(jobs)
+    desc_chars = _GROQ_DESC_CHARS if is_groq else _DEFAULT_DESC_CHARS
+
+    score_map: Dict[str, dict] = {}
+    for i in range(0, len(jobs), batch_size):
+        batch = jobs[i: i + batch_size]
+        score_map.update(_score_batch_with_ai(batch, profile_text, desc_chars, user))
+
     results = []
     for job in jobs:
         ext_id = job["external_id"]
         entry = score_map.get(str(ext_id))
-        if entry:
-            results.append({
-                "id": ext_id,
-                "score": max(0, min(100, int(entry.get("score", 0)))),
-                "summary": entry.get("summary", ""),
-            })
-        else:
-            score, summary = score_job_locally(job, profile)
-            results.append({"id": ext_id, "score": score, "summary": summary})
+        if not entry:
+            raise RuntimeError(f"AI did not return a score for job {ext_id}")
+        results.append({
+            "id": ext_id,
+            "score": max(0, min(100, int(entry.get("score", 0)))),
+            "summary": entry.get("summary", ""),
+        })
 
     results.sort(key=lambda x: x["score"], reverse=True)
     return results

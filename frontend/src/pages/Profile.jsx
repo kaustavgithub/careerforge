@@ -1,7 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
-import Navbar from '../components/Navbar'
 import ProfileView from '../components/profile/ProfileView'
 import { nanoid } from '../components/profile/utils'
 import CertSection from '../components/profile/CertSection'
@@ -278,7 +277,6 @@ export default function Profile() {
   if (error) {
     return (
       <div className="min-h-screen" style={{ background: 'var(--bg-page)' }}>
-        <Navbar />
         <div className="max-w-3xl mx-auto px-4 py-12 text-red-400">{error}</div>
       </div>
     )
@@ -299,7 +297,6 @@ export default function Profile() {
       {/* ── VIEW MODE ──────────────────────────────────────────── */}
       {!isEditing && (
         <>
-          <Navbar />
           {/* Profile action strip */}
           <div className="px-4 py-2" style={{ background: 'var(--bg-card-dim)', borderBottom: '1px solid var(--border-faint)' }}>
             <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-end gap-2">
@@ -348,7 +345,6 @@ export default function Profile() {
       {/* ── EDIT MODE ──────────────────────────────────────────── */}
       {isEditing && (
         <>
-          <Navbar />
           <main className="max-w-3xl mx-auto px-4 py-8 space-y-5">
             {/* Edit header */}
             <div className="flex flex-wrap gap-3 items-center justify-between">

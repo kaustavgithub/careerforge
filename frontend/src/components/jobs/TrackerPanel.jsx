@@ -1,13 +1,12 @@
-const STATUS_ORDER = ['applied', 'saved', 'rejected']
-const STATUS_LABEL = { applied: 'Applied', saved: 'Saved', rejected: 'Rejected' }
+const STATUS_ORDER = ['applied', 'rejected']
+const STATUS_LABEL = { applied: 'Applied', rejected: 'Rejected' }
 const STATUS_COLOR = {
-  applied: { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: '#4ade80' },
-  saved:   { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.2)', text: '#fde047' },
-  rejected:{ bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#f87171' },
+  applied:  { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: '#4ade80' },
+  rejected: { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#f87171' },
 }
 
-export default function TrackerPanel({ jobs, onStatusChange }) {
-  const tracked = jobs.filter(j => j.status !== 'new')
+export default function TrackerPanel({ jobs, onStatusChange, onDelete }) {
+  const tracked = jobs.filter(j => j.status === 'applied' || j.status === 'rejected')
   const grouped = {}
   for (const s of STATUS_ORDER) grouped[s] = tracked.filter(j => j.status === s)
 
@@ -26,7 +25,7 @@ export default function TrackerPanel({ jobs, onStatusChange }) {
 
       {tracked.length === 0 && (
         <p style={{ color: 'var(--text-faint)', fontSize: '0.78rem', textAlign: 'center', marginTop: '2rem' }}>
-          No tracked applications yet.<br />Save or apply to a job to track it here.
+          No applications tracked yet.<br />Mark a saved job as Applied to track it here.
         </p>
       )}
 
@@ -62,14 +61,14 @@ export default function TrackerPanel({ jobs, onStatusChange }) {
                     </p>
                   )}
                   <button
-                    onClick={() => onStatusChange(job.id, 'new')}
+                    onClick={() => onDelete?.(job.id)}
                     style={{
                       background: 'none', border: 'none',
                       color: 'var(--text-faint)', fontSize: '0.7rem',
                       cursor: 'pointer', padding: 0, marginTop: '4px',
                     }}
                   >
-                    ✕ remove from tracker
+                    ✕ remove
                   </button>
                 </div>
               ))}

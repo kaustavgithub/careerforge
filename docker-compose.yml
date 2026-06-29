@@ -44,7 +44,9 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      # Root context so the image can also bundle browser-extension/ as a downloadable zip
+      context: .
+      dockerfile: frontend/Dockerfile
       # VITE_API_URL defaults to /api (proxied by nginx to backend)
       # Override here only if you want a separate API domain instead
       args:

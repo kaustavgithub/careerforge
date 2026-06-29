@@ -140,7 +140,6 @@ export default function JobCard({ job, aiConfigured, onGenerate, onStatusChange,
               fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600,
             }}
           >
-            <option value="new">New</option>
             <option value="saved">Saved</option>
             <option value="applied">Applied</option>
             <option value="rejected">Rejected</option>

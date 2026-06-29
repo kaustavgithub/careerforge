@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/client'
-import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
 import { useAISettings } from '../context/AISettingsContext'
 
@@ -55,8 +54,6 @@ export default function Dashboard() {
         style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.10) 0%, transparent 65%)' }} />
       <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full pointer-events-none"
         style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 65%)' }} />
-
-      <Navbar />
 
       <main className="relative max-w-2xl mx-auto px-4 py-14">
         {/* Greeting */}
@@ -201,27 +198,43 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs w-4 text-center font-bold" style={{ color: 'var(--text-faint)' }}>1</span>
                   <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    Load <code className="text-indigo-400 bg-indigo-950/50 px-1 py-0.5 rounded">browser-extension/</code> folder in Chrome at <code style={{ color: 'var(--text-secondary)' }}>chrome://extensions</code> → Developer mode → Load unpacked
+                    Download the extension below, then unzip it
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs w-4 text-center font-bold" style={{ color: 'var(--text-faint)' }}>2</span>
-                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Click the extension icon, enter your CareerForge URL, then paste the token below</p>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    In Chrome go to <code style={{ color: 'var(--text-secondary)' }}>chrome://extensions</code> → enable <span className="font-semibold">Developer mode</span> → <span className="font-semibold">Load unpacked</span> → select the unzipped <code className="text-indigo-400 bg-indigo-950/50 px-1 py-0.5 rounded">browser-extension</code> folder
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs w-4 text-center font-bold" style={{ color: 'var(--text-faint)' }}>3</span>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Click the extension icon, enter your CareerForge URL, then paste the token below</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs w-4 text-center font-bold" style={{ color: 'var(--text-faint)' }}>4</span>
                   <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Open any LinkedIn job — the save button will appear automatically</p>
                 </div>
               </div>
 
-              <button onClick={copyToken} className="mt-4 px-4 py-2 rounded-lg text-xs font-bold transition"
-                style={{
-                  background: tokenCopied ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.15)',
-                  border: `1px solid ${tokenCopied ? 'rgba(34,197,94,0.3)' : 'rgba(99,102,241,0.3)'}`,
-                  color: tokenCopied ? '#4ade80' : '#818cf8',
-                }}>
-                {tokenCopied ? '✓ Token copied!' : 'Copy API Token'}
-              </button>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a href="/careerforge-extension.zip" download className="px-4 py-2 rounded-lg text-xs font-bold transition inline-block"
+                  style={{
+                    background: 'rgba(99,102,241,0.15)',
+                    border: '1px solid rgba(99,102,241,0.3)',
+                    color: '#818cf8',
+                  }}>
+                  Download Extension
+                </a>
+                <button onClick={copyToken} className="px-4 py-2 rounded-lg text-xs font-bold transition"
+                  style={{
+                    background: tokenCopied ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.15)',
+                    border: `1px solid ${tokenCopied ? 'rgba(34,197,94,0.3)' : 'rgba(99,102,241,0.3)'}`,
+                    color: tokenCopied ? '#4ade80' : '#818cf8',
+                  }}>
+                  {tokenCopied ? '✓ Token copied!' : 'Copy API Token'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

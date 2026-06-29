@@ -4,10 +4,10 @@ Adds a **⚡ Save to CareerForge** button on LinkedIn job pages. One click extra
 
 ## Install
 
-1. Clone or download the repo so you have the `browser-extension/` folder locally.
+1. Log in to your CareerForge portal, go to **Dashboard** → scroll to **LinkedIn Browser Extension** → click **Download Extension**, then unzip the downloaded file.
 2. Open Chrome (or Edge) and go to `chrome://extensions`.
 3. Enable **Developer mode** (toggle, top-right).
-4. Click **Load unpacked** and select the `browser-extension/` folder.
+4. Click **Load unpacked** and select the unzipped `browser-extension/` folder.
 
 The CareerForge icon will appear in your browser toolbar.
 
