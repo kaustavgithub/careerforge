@@ -85,7 +85,13 @@ const SORT_OPTIONS = [
 
 export default function Jobs() {
   const { settings: aiSettings, aiConfigured } = useAISettings()
+  const country = aiSettings?.country || null
+  const showSearch = !country || country === 'SE'
   const [tab, setTab] = useState('search')
+
+  useEffect(() => {
+    if (!showSearch && tab === 'search') setTab('analyse')
+  }, [showSearch])
 
   // ── Search tab ────────────────────────────────────────────────────────────
   const [query, setQuery] = useState(() => sessionStorage.getItem('jb_query') || '')
@@ -124,6 +130,10 @@ export default function Jobs() {
 
   function handleSaved(savedJob) {
     setSavedIds(prev => new Set([...prev, savedJob.external_id]))
+    setDbJobs(prev => {
+      if (prev.some(j => j.id === savedJob.id)) return prev
+      return [savedJob, ...prev]
+    })
   }
 
   // ── Saved / Applied / Rejected tab (DB-backed) ────────────────────────────
@@ -282,8 +292,15 @@ export default function Jobs() {
 
   async function runCoverLetter() {
     setGenerating(true); setGenError(null)
-    try { await ensureSaved() } catch (err) { setGenError(err.response?.data?.detail || 'Generation failed.') }
-    finally { setGenerating(false) }
+    try {
+      const job = await ensureSaved()
+      const { data } = await api.post(`/jobs/${job.id}/generate`)
+      setSavedJDJob(data)
+    } catch (err) {
+      setGenError(err.response?.data?.detail || 'Generation failed.')
+    } finally {
+      setGenerating(false)
+    }
   }
 
   async function runDownloadCV(format) {
@@ -314,7 +331,7 @@ export default function Jobs() {
   // ── Tab config ────────────────────────────────────────────────────────────
 
   const TABS = [
-    { key: 'search',   label: 'Search Jobs' },
+    ...(showSearch ? [{ key: 'search', label: 'Search Jobs' }] : []),
     { key: 'analyse',  label: 'JD Analyser' },
     { key: 'saved',    label: 'Saved',    count: dbLoaded ? savedJobs.length    : null },
     { key: 'applied',  label: 'Applied',  count: dbLoaded ? appliedJobs.length  : null },
@@ -419,7 +436,7 @@ export default function Jobs() {
         </div>
 
         {/* ── Search Jobs ─────────────────────────────────────────────────── */}
-        {tab === 'search' && (
+        {showSearch && tab === 'search' && (
           <div style={{ maxWidth: '900px', margin: '0 auto', padding: '1.5rem 1.5rem 2rem' }}>
             <div style={{ marginBottom: '1.5rem' }}>
               <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>Job Search</h1>

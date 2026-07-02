@@ -136,11 +136,13 @@ def oidc_callback(
 
     # Find existing user or create one (no password for SSO users)
     user = db.query(User).filter(User.email == email).first()
+    is_new_user = False
     if not user:
         user = User(email=email, full_name=full_name, hashed_password=None)
         db.add(user)
         db.commit()
         db.refresh(user)
+        is_new_user = True
 
     # Issue CareerForge JWT and send user back to the frontend
     jwt = create_token(str(user.id))
@@ -149,6 +151,7 @@ def oidc_callback(
         "user_id": str(user.id),
         "full_name": user.full_name,
         "email": user.email,
+        **({"is_new": "1"} if is_new_user else {}),
     })
     response = RedirectResponse(url=f"{settings.frontend_url}/auth/callback?{qs}", status_code=302)
     response.delete_cookie("oidc_state")

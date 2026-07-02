@@ -31,7 +31,7 @@ export default function Register() {
         full_name: data.full_name,
       })
       login(res.data)
-      navigate('/dashboard')
+      navigate('/settings')
     } catch (err) {
       setError('root', { message: err.response?.data?.detail || 'Registration failed' })
     }

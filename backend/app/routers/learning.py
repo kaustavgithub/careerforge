@@ -11,6 +11,7 @@ from app.services import ai_providers
 from app.services.learning_service import (
     build_copy_prompt,
     generate_learning_plan,
+    update_skill_gaps_from_jobs,
 )
 
 router = APIRouter(prefix="/learning", tags=["learning"])
@@ -26,6 +27,26 @@ def _get_profile(user, db: Session):
 class LearnRequest(BaseModel):
     skill: str
     jobs: List[dict]
+
+
+@router.post("/refresh-skill-gaps")
+def refresh_skill_gaps(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """Recompute skill gaps from all the user's saved and applied jobs."""
+    from app.models.job import JobListing
+    profile = _get_profile(current_user, db)
+    jobs = (
+        db.query(JobListing)
+        .filter(
+            JobListing.user_id == current_user.id,
+            JobListing.status.in_(["saved", "applied"]),
+        )
+        .all()
+    )
+    if not jobs:
+        return {"updated": 0}
+    update_skill_gaps_from_jobs(jobs, profile, current_user.id, db)
+    count = db.query(UserSkillGap).filter(UserSkillGap.user_id == current_user.id).count()
+    return {"updated": count}
 
 
 @router.get("/skill-gaps")

@@ -12,11 +12,31 @@ const PROVIDERS = [
 const CUSTOM_MODEL = '__custom__'
 const providerInfo = value => PROVIDERS.find(p => p.value === value) || PROVIDERS[0]
 
+const COUNTRIES = [
+  { code: 'SE', label: 'Sweden' },
+  { code: 'GB', label: 'United Kingdom' },
+  { code: 'US', label: 'United States' },
+  { code: 'DE', label: 'Germany' },
+  { code: 'FR', label: 'France' },
+  { code: 'NL', label: 'Netherlands' },
+  { code: 'NO', label: 'Norway' },
+  { code: 'DK', label: 'Denmark' },
+  { code: 'FI', label: 'Finland' },
+  { code: 'CA', label: 'Canada' },
+  { code: 'AU', label: 'Australia' },
+  { code: 'IN', label: 'India' },
+  { code: 'SG', label: 'Singapore' },
+  { code: 'AE', label: 'UAE' },
+  { code: 'OTHER', label: 'Other' },
+]
+
 export default function Settings() {
   const { settings, refresh: refreshAiSettings } = useAISettings()
   const [configs, setConfigs] = useState([])
   const [loading, setLoading] = useState(true)
   const [useLocalAi, setUseLocalAi] = useState(true)
+  const [country, setCountry] = useState('')
+  const [countrySaving, setCountrySaving] = useState(false)
   const [busyId, setBusyId] = useState(null)
   const [msg, setMsg] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
@@ -30,14 +50,31 @@ export default function Settings() {
 
   useEffect(() => {
     setLoading(true)
-    Promise.all([loadConfigs(), api.get('/settings').then(r => setUseLocalAi(r.data.use_local_ai !== false))])
-      .finally(() => setLoading(false))
+    Promise.all([
+      loadConfigs(),
+      api.get('/settings').then(r => {
+        setUseLocalAi(r.data.use_local_ai !== false)
+        setCountry(r.data.country || '')
+      }),
+    ]).finally(() => setLoading(false))
   }, [])
 
   async function toggleLocalAi(value) {
     setUseLocalAi(value)
     await api.patch('/settings/use-local-ai', { use_local_ai: value })
     refreshAiSettings()
+  }
+
+  async function handleCountryChange(e) {
+    const value = e.target.value
+    setCountry(value)
+    setCountrySaving(true)
+    try {
+      await api.patch('/settings/country', { country: value || null })
+      refreshAiSettings()
+    } finally {
+      setCountrySaving(false)
+    }
   }
 
   async function activate(id) {
@@ -210,6 +247,51 @@ export default function Settings() {
                   )
                 })}
               </div>
+            </div>
+
+            {/* Country Section */}
+            <div style={{ marginBottom: '1.75rem' }}>
+              <label style={sectionLabelStyle}>Your Location</label>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-faint)', margin: '0 0 0.85rem' }}>
+                Used to show relevant features. The job search tab is powered by Sweden's JobTech API
+                and is only shown for users in Sweden.
+              </p>
+              <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                <select
+                  value={country}
+                  onChange={handleCountryChange}
+                  disabled={countrySaving}
+                  style={{
+                    padding: '0.55rem 2.2rem 0.55rem 0.85rem',
+                    borderRadius: '0.65rem',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--input-border)',
+                    color: country ? 'var(--input-color)' : 'var(--text-faint)',
+                    fontSize: '0.875rem',
+                    outline: 'none',
+                    cursor: countrySaving ? 'wait' : 'pointer',
+                    appearance: 'none',
+                    minWidth: '200px',
+                  }}
+                >
+                  <option value=''>Select your country…</option>
+                  {COUNTRIES.map(c => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                </select>
+                <span style={{
+                  position: 'absolute', right: '0.65rem', pointerEvents: 'none',
+                  color: 'var(--text-faint)', fontSize: '0.75rem',
+                }}>▾</span>
+                {countrySaving && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>Saving…</span>
+                )}
+              </div>
+              {country && country !== 'SE' && (
+                <p style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--text-faint)' }}>
+                  Job Search tab is hidden — use JD Analyser to paste listings from any job board.
+                </p>
+              )}
             </div>
 
             {/* AI Mode Section */}

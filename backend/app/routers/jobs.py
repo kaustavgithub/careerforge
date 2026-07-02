@@ -148,6 +148,11 @@ def save_job(body: JobSaveRequest, current_user=Depends(get_current_user), db: S
             existing.status = "saved"
             db.commit()
             db.refresh(existing)
+            try:
+                from app.services.learning_service import update_skill_gaps_from_jobs
+                update_skill_gaps_from_jobs([existing], profile, current_user.id, db)
+            except Exception as _e:
+                logger.warning("Skill gap update failed (non-fatal): %s", _e)
         return existing
 
     listing = JobListing(
