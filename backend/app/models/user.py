@@ -18,6 +18,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     use_local_ai = Column(Boolean, nullable=False, default=True, server_default="true")
     active_ai_config_id = Column(UUID(as_uuid=True), ForeignKey("ai_configs.id", ondelete="SET NULL"), nullable=True)
+    country = Column(String, nullable=True)
 
     profile = relationship("Profile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     job_listings = relationship("JobListing", back_populates="user", cascade="all, delete-orphan")

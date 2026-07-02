@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -13,11 +15,16 @@ class UseLocalAiUpdate(BaseModel):
     use_local_ai: bool
 
 
+class CountryUpdate(BaseModel):
+    country: Optional[str] = None
+
+
 @router.get("", response_model=SettingsRead)
 def get_settings(current_user=Depends(get_current_user)):
     return SettingsRead(
         use_local_ai=current_user.use_local_ai if current_user.use_local_ai is not None else True,
         active_ai_config_id=current_user.active_ai_config_id,
+        country=current_user.country,
     )
 
 
@@ -30,3 +37,14 @@ def update_use_local_ai(
     current_user.use_local_ai = body.use_local_ai
     db.commit()
     return {"use_local_ai": current_user.use_local_ai}
+
+
+@router.patch("/country")
+def update_country(
+    body: CountryUpdate,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    current_user.country = body.country
+    db.commit()
+    return {"country": current_user.country}

@@ -39,6 +39,7 @@ export default function JobCard({ job, aiConfigured, onGenerate, onStatusChange,
   const [detectedLang, setDetectedLang] = useState(null)
   const [tailorOpen, setTailorOpen] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const tailorRef = useRef(null)
 
   useEffect(() => {
@@ -128,22 +129,61 @@ export default function JobCard({ job, aiConfigured, onGenerate, onStatusChange,
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem', flexShrink: 0 }}>
-          <select
-            value={job.status}
-            onClick={e => e.stopPropagation()}
-            onChange={e => { e.stopPropagation(); onStatusChange(job.id, e.target.value) }}
-            style={{
-              background: STATUS_COLORS[job.status] || 'var(--bg-card)',
-              color: STATUS_TEXT[job.status] || 'var(--text-secondary)',
-              border: '1px solid var(--border)',
-              borderRadius: '6px', padding: '2px 6px',
-              fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600,
-            }}
-          >
-            <option value="saved">Saved</option>
-            <option value="applied">Applied</option>
-            <option value="rejected">Rejected</option>
-          </select>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <select
+              value={job.status}
+              onClick={e => e.stopPropagation()}
+              onChange={e => { e.stopPropagation(); onStatusChange(job.id, e.target.value) }}
+              style={{
+                background: STATUS_COLORS[job.status] || 'var(--bg-card)',
+                color: STATUS_TEXT[job.status] || 'var(--text-secondary)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px', padding: '2px 6px',
+                fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600,
+              }}
+            >
+              <option value="saved">Saved</option>
+              <option value="applied">Applied</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            {confirmingDelete ? (
+              <div onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <button
+                  onClick={e => { e.stopPropagation(); onDelete(job.id) }}
+                  style={{
+                    background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)',
+                    color: '#f87171', borderRadius: '4px', padding: '2px 7px',
+                    fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  Remove
+                </button>
+                <button
+                  onClick={e => { e.stopPropagation(); setConfirmingDelete(false) }}
+                  style={{
+                    background: 'none', border: 'none', color: 'var(--text-faint)',
+                    fontSize: '0.72rem', cursor: 'pointer', padding: '2px 4px',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={e => { e.stopPropagation(); setConfirmingDelete(true) }}
+                title="Remove"
+                style={{
+                  background: 'none', border: 'none', padding: '2px 4px',
+                  color: 'var(--text-faint)', fontSize: '0.85rem',
+                  cursor: 'pointer', lineHeight: 1, borderRadius: '4px',
+                }}
+                onMouseEnter={e => e.currentTarget.style.color = '#f87171'}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-faint)'}
+              >
+                ✕
+              </button>
+            )}
+          </div>
           <span style={{ color: 'var(--text-faint)', fontSize: '0.7rem' }}>
             {expanded ? '▲ collapse' : '▼ expand'}
           </span>
@@ -288,13 +328,6 @@ export default function JobCard({ job, aiConfigured, onGenerate, onStatusChange,
               )}
             </div>
 
-            <button onClick={() => onDelete(job.id)} style={{
-              background: 'rgba(239,68,68,0.08)', color: '#f87171',
-              border: '1px solid rgba(239,68,68,0.2)', borderRadius: '7px',
-              padding: '0.45rem 0.75rem', fontSize: '0.8rem', cursor: 'pointer',
-            }}>
-              Remove
-            </button>
           </div>
         </div>
       )}

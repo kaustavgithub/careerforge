@@ -12,6 +12,8 @@ export default function Learning() {
   const [selected, setSelected] = useState(null)
   const [pageSize, setPageSize] = useState(10)
   const [page, setPage] = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshMsg, setRefreshMsg] = useState(null)
 
   async function load() {
     setLoading(true)
@@ -26,6 +28,20 @@ export default function Learning() {
     }
   }
 
+  async function handleRefresh() {
+    setRefreshing(true)
+    setRefreshMsg(null)
+    try {
+      const { data } = await api.post('/learning/refresh-skill-gaps')
+      setRefreshMsg(data.updated > 0 ? `Found ${data.updated} skill gaps from your saved jobs.` : 'No skill gaps found — save some jobs first.')
+      await load()
+    } catch (e) {
+      setRefreshMsg(e?.response?.data?.detail || 'Refresh failed.')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
   useEffect(() => { load() }, [])
 
   useEffect(() => { setPage(0) }, [gaps, pageSize])
@@ -34,18 +50,45 @@ export default function Learning() {
     <div style={{ minHeight: '100vh', background: 'var(--bg-gradient)' }}>
       <div style={{ maxWidth: '860px', margin: '0 auto', padding: '2rem 1rem' }}>
         {/* Header */}
-        <div style={{ marginBottom: '2rem' }}>
-          <h1 style={{
-            fontWeight: 800, fontSize: '1.6rem',
-            background: 'linear-gradient(135deg, #818cf8, #c4b5fd)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            margin: '0 0 0.4rem',
-          }}>
-            Skills to learn
-          </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', margin: 0 }}>
-            Skills identified across your scored job listings — updated automatically when you search or score jobs.
-          </p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+          <div>
+            <h1 style={{
+              fontWeight: 800, fontSize: '1.6rem',
+              background: 'linear-gradient(135deg, #818cf8, #c4b5fd)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              margin: '0 0 0.4rem',
+            }}>
+              Skills to learn
+            </h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', margin: 0 }}>
+              Skills identified from your saved jobs — click Refresh to recompute from your current saved job list.
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem', flexShrink: 0 }}>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing || loading}
+              style={{
+                background: refreshing ? 'rgba(129,140,248,0.2)' : 'rgba(129,140,248,0.15)',
+                color: '#818cf8',
+                border: '1px solid rgba(129,140,248,0.35)',
+                borderRadius: '0.625rem',
+                padding: '0.45rem 1rem',
+                fontSize: '0.8rem', fontWeight: 600,
+                cursor: refreshing || loading ? 'not-allowed' : 'pointer',
+                opacity: refreshing || loading ? 0.6 : 1,
+                transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {refreshing ? 'Refreshing…' : '↻ Refresh'}
+            </button>
+            {refreshMsg && (
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)', textAlign: 'right' }}>
+                {refreshMsg}
+              </span>
+            )}
+          </div>
         </div>
 
         {loading && (
@@ -84,9 +127,22 @@ export default function Learning() {
           }}>
             <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>🎯</div>
             <h3 style={{ color: 'var(--text-secondary)', fontWeight: 600, margin: '0 0 0.4rem' }}>No skill gaps found</h3>
-            <p style={{ color: 'var(--text-faint)', fontSize: '0.85rem', margin: 0 }}>
-              Search for jobs on the Jobs page — skill gaps are built automatically as you score jobs.
+            <p style={{ color: 'var(--text-faint)', fontSize: '0.85rem', margin: '0 0 1.25rem' }}>
+              Save jobs on the Jobs page, then click <strong style={{ color: 'var(--text-secondary)' }}>Refresh</strong> above to compute your skill gaps.
             </p>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              style={{
+                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                color: '#fff', border: 'none', borderRadius: '0.625rem',
+                padding: '0.5rem 1.25rem', fontSize: '0.85rem', fontWeight: 600,
+                cursor: refreshing ? 'not-allowed' : 'pointer',
+                opacity: refreshing ? 0.6 : 1,
+              }}
+            >
+              {refreshing ? 'Refreshing…' : '↻ Refresh now'}
+            </button>
           </div>
         )}
 

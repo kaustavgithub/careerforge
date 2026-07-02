@@ -17,9 +17,11 @@ export default function OidcCallback() {
     const full_name = params.get('full_name')
     const email = params.get('email')
 
+    const is_new = params.get('is_new')
+
     if (access_token && user_id) {
       login({ access_token, user_id, full_name, email })
-      navigate('/dashboard', { replace: true })
+      navigate(is_new === '1' ? '/settings' : '/dashboard', { replace: true })
     } else {
       navigate('/login?error=sso_failed', { replace: true })
     }
